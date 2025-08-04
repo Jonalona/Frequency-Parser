@@ -256,7 +256,7 @@
             rerender();
         });
     </script>
-    <py-script>
+    <script type="py">
 import json
 from RFP_JSON_Parser import DateRuleParser
 
@@ -269,6 +269,6 @@ def parse_rule(rule_json):
         "effective_start_date": parser.effective_start_date.isoformat() if parser.effective_start_date else "",
         "effective_end_date": parser.effective_end_date.isoformat() if parser.effective_end_date else ""
     }
-    </py-script>
+</script>
 </body>
 </html>
