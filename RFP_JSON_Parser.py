@@ -3,14 +3,7 @@ from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import holidays
 from dateutil.rrule import rrule, DAILY, WEEKLY, MONTHLY, MO, TU, WE, TH, FR, SA, SU
-import pandas as pd
 from quarter_helper_functions import get_nth_quarter_func_dict
-
-
-us_holidays = holidays.US()
-# Open and read the JSON file
-with open('test.json', 'r') as file:
-    data = json.load(file)
 
 
 
@@ -493,8 +486,3 @@ class DateRuleParser:
         return all_dates
     
 
-
-
-
-# parser = DateRuleParser(test_dict)
-# print(parser)
