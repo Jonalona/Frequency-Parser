@@ -7,6 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.7.0/math.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+    <py-config>
+        packages = ["python-dateutil", "holidays"]
+        paths = ["."]
+    </py-config>
     <style>
         body { font-family: 'Inter', sans-serif; }
         ::-webkit-scrollbar { width: 8px; }
@@ -92,9 +98,13 @@
 
         function getValueByPath(obj, path) { return path.split('.').reduce((o, k) => (o || {})[k], obj); }
         function getRuleFromTarget(target) { const formContainer = target.closest('[data-form-container]'); if (!formContainer) return null; const groupIndex = formContainer.dataset.groupIndex; return groupIndex !== undefined ? appState.ruleGroups[parseInt(groupIndex)].rule : appState.singleRule; }
+
+        function formatDate(dateStr) { if (!dateStr) return ''; const d = new Date(dateStr); const month = d.toLocaleString('default', { month: 'long' }); const day = d.getDate(); const year = d.getFullYear(); return `${month} ${getOrdinal(day)} ${year}`; }
+
+        async function parseAndDisplayDates(ruleJson) { try { await window.pyodideReadyPromise; const pyodide = window.pyodide; const parse_rule = pyodide.globals.get('parse_rule'); const pyResult = parse_rule(ruleJson); const result = pyResult.toJs({dict_converter: Object.fromEntries}); ['start_date','end_date','effective_start_date','effective_end_date'].forEach(key => { const formatted = formatDate(result[key]); document.querySelectorAll(`[data-date-output="${key}"]`).forEach(el => el.textContent = formatted); }); } catch (err) { console.error('Python parsing failed', err); } }
         
         // --- JSON GENERATION ---
-        function generateJson() { let finalJson; if (!appState.advancedModeEnabled) { finalJson = getCleanRuleObject(appState.singleRule); } else { finalJson = {}; appState.ruleGroups.forEach((group, index) => { const groupKey = `group-${index + 1}`; const ruleForJson = getCleanRuleObject(group.rule); ruleForJson.rule_specific_days = group.days; finalJson[groupKey] = ruleForJson; }); } const jsonString = JSON.stringify(finalJson, null, 2).replace(/: true/g, ': True').replace(/: false/g, ': False'); jsonOutputEl.textContent = jsonString; }
+        function generateJson() { let finalJson; if (!appState.advancedModeEnabled) { finalJson = getCleanRuleObject(appState.singleRule); } else { finalJson = {}; appState.ruleGroups.forEach((group, index) => { const groupKey = `group-${index + 1}`; const ruleForJson = getCleanRuleObject(group.rule); ruleForJson.rule_specific_days = group.days; finalJson[groupKey] = ruleForJson; }); } const jsonString = JSON.stringify(finalJson, null, 2).replace(/: true/g, ': True').replace(/: false/g, ': False'); jsonOutputEl.textContent = jsonString; parseAndDisplayDates(jsonString); }
         
         function getCleanRuleObject(ruleObj) {
             const stateToSerialize = deepClone(ruleObj);
@@ -117,7 +127,7 @@
             return formContainer;
         }
 
-        function createDateBuilder(label, dateKey, stateObject, groupIndex) { const gIndexAttr = groupIndex !== null ? `data-group-index="${groupIndex}"` : ''; const container = document.createElement('div'); container.className = 'border border-gray-700 p-4 rounded-md'; container.innerHTML = `<label class="block text-lg font-medium mb-2">${label}</label><select data-action="change-date-type" data-date-key="${dateKey}" ${gIndexAttr} class="w-full p-2 bg-gray-700 rounded-md mb-4"><option value="relative" ${stateObject.type==='relative'?'selected':''}>Relative</option><option value="absolute" ${stateObject.type==='absolute'?'selected':''}>Absolute</option>${dateKey === 'end_date' ? `<option value="relative_to_start" ${stateObject.type==='relative_to_start'?'selected':''}>Relative to Start</option>` : ''}</select><div data-container="date-options"></div>`; const optionsContainer = container.querySelector('[data-container="date-options"]'); if (stateObject.type === 'relative') { optionsContainer.innerHTML = createRelativeOptions(dateKey, stateObject, groupIndex); } else if (stateObject.type === 'absolute') { optionsContainer.innerHTML = createAbsoluteOptions(dateKey, stateObject); } else if (stateObject.type === 'relative_to_start') { optionsContainer.innerHTML = createRelativeToStartOptions(dateKey, stateObject); } container.insertAdjacentHTML('beforeend', createRefinementOptions(dateKey, stateObject, groupIndex)); return container; }
+        function createDateBuilder(label, dateKey, stateObject, groupIndex) { const gIndexAttr = groupIndex !== null ? `data-group-index="${groupIndex}"` : ''; const dateOutputKey = dateKey.replace(/\./g, '_'); const container = document.createElement('div'); container.className = 'border border-gray-700 p-4 rounded-md'; container.innerHTML = `<label class="block text-lg font-medium mb-2">${label}: <span class="text-teal-300" data-date-output="${dateOutputKey}"></span></label><select data-action="change-date-type" data-date-key="${dateKey}" ${gIndexAttr} class="w-full p-2 bg-gray-700 rounded-md mb-4"><option value="relative" ${stateObject.type==='relative'?'selected':''}>Relative</option><option value="absolute" ${stateObject.type==='absolute'?'selected':''}>Absolute</option>${dateKey === 'end_date' ? `<option value="relative_to_start" ${stateObject.type==='relative_to_start'?'selected':''}>Relative to Start</option>` : ''}</select><div data-container="date-options"></div>`; const optionsContainer = container.querySelector('[data-container="date-options"]'); if (stateObject.type === 'relative') { optionsContainer.innerHTML = createRelativeOptions(dateKey, stateObject, groupIndex); } else if (stateObject.type === 'absolute') { optionsContainer.innerHTML = createAbsoluteOptions(dateKey, stateObject); } else if (stateObject.type === 'relative_to_start') { optionsContainer.innerHTML = createRelativeToStartOptions(dateKey, stateObject); } container.insertAdjacentHTML('beforeend', createRefinementOptions(dateKey, stateObject, groupIndex)); return container; }
         
         // --- MODIFIED FUNCTION ---
         function createRelativeOptions(dateKey, state, groupIndex) {
@@ -246,5 +256,19 @@
             rerender();
         });
     </script>
+    <script type="py">
+import json
+from RFP_JSON_Parser import DateRuleParser
+
+def parse_rule(rule_json):
+    rule_dict = json.loads(rule_json)
+    parser = DateRuleParser(rule_dict)
+    return {
+        "start_date": parser.start_date.isoformat(),
+        "end_date": parser.end_date.isoformat(),
+        "effective_start_date": parser.effective_start_date.isoformat() if parser.effective_start_date else "",
+        "effective_end_date": parser.effective_end_date.isoformat() if parser.effective_end_date else ""
+    }
+</script>
 </body>
 </html>
