@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFP Rule Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.7.0/math.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+
+
+
+    <!-- PyScript CSS -->
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+    <!-- PyScript runtime -->
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    <py-config>
+    packages = ["python-dateutil","holidays"]
+    </py-config>
+
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+        .group-container { border: 2px solid #374151; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 2rem; }
+        .group-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #4b5563; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+        .day-selector-disabled { opacity: 0.4; cursor: not-allowed; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white p-4 sm:p-6 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-white">RFP Rule Builder</h1>
+            <p class="text-gray-400 mt-1">Use the form to build and generate the corresponding JSON rule.</p>
+        </header>
+        
+        <div class="bg-gray-800 p-4 rounded-lg border border-teal-500/50 mb-8">
+            <label for="advanced-mode-toggle" class="flex items-center justify-between cursor-pointer">
+                <div>
+                    <span class="text-lg font-semibold text-teal-300">Enable Day-Specific Rules</span>
+                    <p class="text-xs text-gray-400 mt-1 font-light">Create different rules for different days of the week.</p>
+                </div>
+                <input type="checkbox" id="advanced-mode-toggle" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-teal-600 focus:ring-teal-500">
+            </label>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div id="main-rule-container" class="space-y-6"></div>
+            <div class="sticky top-8 self-start">
+                <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">Generated JSON</h2>
+                        <button id="copy-json-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2 px-4 rounded-md text-sm">Copy JSON</button>
+                    </div>
+                    <div class="bg-gray-900 p-4 rounded-md max-h-[80vh] overflow-y-auto">
+                        <pre><code id="json-output"></code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+        // --- INITIAL STATE & CONSTANTS ---
+        const initialRuleState_full = { alias: "CONTRACT_RULE_Q2_AVG", ignore_missing: false, "global-relative-from-today": "today", start_date: { type: "relative", "relative-minor": { "value": 3, "unit": "MONTHS", "direction": "AGO", "snap_to": null, "skip_weekends": false }, "refine-by-weekday": { enabled: false, position: "FIRST", direction: "PRECEDING", weekday: "Monday" }, "refine-by-days": { enabled: false, value: 0, direction: "FOLLOWING" } }, end_date: { type: "relative", "relative-minor": { "value": 1, "unit": "MONTHS", "direction": "AGO", "snap_to": null, "skip_weekends": false }, "refine-by-weekday": { enabled: false, position: "FIRST", direction: "PRECEDING", weekday: "Monday" }, "refine-by-days": { enabled: false, value: 0, direction: "FOLLOWING" } }, day_filter: [ { type: "inclusive_days_of_week", days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] } ], pattern_filter: { enabled: false, interval: 1, unit: "DAY" }, aggregate: { type: "MEAN", by: "Volume", first_day_only: true }, effective: { start_date: { type: "relative",  "relative-minor": { value: 1, unit: "DAYS", direction: "after-end-date", "snap_to": null, "skip_weekends": false }, "refine-by-weekday": { enabled: false, position: "FIRST", direction: "PRECEDING", weekday: "Monday" }, "refine-by-days": { enabled: false, value: 0, direction: "FOLLOWING" } }, end_date: { type: "relative",  "relative-minor": { value: 1, unit: "MONTHS", direction: "after-end-date", "snap_to": null, "skip_weekends": false }, "refine-by-weekday": { enabled: false, position: "FIRST", direction: "PRECEDING", weekday: "Monday" }, "refine-by-days": { enabled: false, value: 0, direction: "FOLLOWING" } } }, repeat: { interval: 2, unit: "WEEK", anchor_day: "Monday", start: { type: "absolute", value: "2023-06-25" } } };
+
+        let appState = {
+            advancedModeEnabled: false,
+            singleRule: JSON.parse(JSON.stringify(initialRuleState_full)),
+            ruleGroups: []
+        };
+        const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        const UNITS = ["DAYS", "WEEKS", "MONTHS", "QUARTERS"];
+        const REFINE_POSITIONS = ["FIRST", "SECOND", "THIRD", "FOURTH", "FIFTH", "SIXTH"];
+        const REFINE_DIRECTIONS = ["PRECEDING", "FOLLOWING"];
+        const DIRECTION_OPTIONS = { standard: [{ value: "AGO", text: "AGO" }, { value: "FROM NOW", text: "FROM NOW" }], effectiveStart: [{ value: "after-end-date", text: "After End Date" }, { value: "before-end-date", text: "Before End Date" }], effectiveEnd: [ { value: "after-end-date", text: "After End Date" }, { value: "before-end-date", text: "Before End Date" }, { value: "after-effective-start-date", text: "After Effective Start Date" } ] };
+
+        const jsonOutputEl = document.getElementById('json-output');
+        const mainRuleContainerEl = document.getElementById('main-rule-container');
+        const advancedModeToggleEl = document.getElementById('advanced-mode-toggle');
+        const copyJsonBtn = document.getElementById('copy-json-btn');
+
+        // --- CORE HELPER FUNCTIONS ---
+        function getOrdinal(n) { if (n == null || isNaN(n)) return ''; const s = ["th", "st", "nd", "rd"]; const v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+        function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+        function setValueByPath(obj, path, value) {
+            const pathArray = path.match(/([^[.\]])+/g);
+            pathArray.reduce((acc, key, i) => {
+                if (acc[key] === undefined) {
+                    acc[key] = /^\d+$/.test(pathArray[i + 1]) ? [] : {};
+                }
+                if (i === pathArray.length - 1) {
+                    acc[key] = value;
+                }
+                return acc[key];
+            }, obj);
+        }
+
+        function getValueByPath(obj, path) { return path.split('.').reduce((o, k) => (o || {})[k], obj); }
+        function getRuleFromTarget(target) { const formContainer = target.closest('[data-form-container]'); if (!formContainer) return null; const groupIndex = formContainer.dataset.groupIndex; return groupIndex !== undefined ? appState.ruleGroups[parseInt(groupIndex)].rule : appState.singleRule; }
+        
+        // --- JSON GENERATION ---
+        function generateJson() { let finalJson; if (!appState.advancedModeEnabled) { finalJson = getCleanRuleObject(appState.singleRule); } else { finalJson = {}; appState.ruleGroups.forEach((group, index) => { const groupKey = `group-${index + 1}`; const ruleForJson = getCleanRuleObject(group.rule); ruleForJson.rule_specific_days = group.days; finalJson[groupKey] = ruleForJson; }); } const jsonString = JSON.stringify(finalJson, null, 2).replace(/: true/g, ': True').replace(/: false/g, ': False'); jsonOutputEl.textContent = jsonString; }
+        
+        //triggers JSONgeneration and then updates the 4 date headeers with the parsed dates
+        function publishJsonUpdate() {
+            // First, generate the JSON as before
+            generateJson();
+            // Then, announce that the JSON is ready by dispatching a custom event
+            document.dispatchEvent(new CustomEvent('jsonUpdated'));
+        }
+
+
+        function getCleanRuleObject(ruleObj) {
+            const stateToSerialize = deepClone(ruleObj);
+            const cleanDateObject = (dateObj) => { if (!dateObj) return; if (dateObj.type === 'relative' && dateObj['relative-minor']) { if (dateObj['relative-minor'].snap_to === null) delete dateObj['relative-minor'].snap_to; if (!dateObj['relative-minor'].skip_weekends) delete dateObj['relative-minor'].skip_weekends; } if (dateObj["refine-by-weekday"]) { if (!dateObj["refine-by-weekday"].enabled) delete dateObj["refine-by-weekday"]; else delete dateObj["refine-by-weekday"].enabled; } if (dateObj["refine-by-days"]) { if (!dateObj["refine-by-days"].enabled) delete dateObj["refine-by-days"]; else delete dateObj["refine-by-days"].enabled; } };
+            cleanDateObject(stateToSerialize.start_date); cleanDateObject(stateToSerialize.end_date);
+            if (stateToSerialize.effective) { cleanDateObject(stateToSerialize.effective.start_date); cleanDateObject(stateToSerialize.effective.end_date); }
+            if (!stateToSerialize.pattern_filter || !stateToSerialize.pattern_filter.enabled) { delete stateToSerialize.pattern_filter; } else { delete stateToSerialize.pattern_filter.enabled; }
+            return stateToSerialize;
+        }
+        
+        // --- DYNAMIC UI BUILDER FUNCTIONS ---
+        function createCompleteRuleForm(rule, groupIndex = null) {
+            const formContainer = document.createElement('div'); formContainer.dataset.formContainer = 'true';
+            if (groupIndex !== null) formContainer.dataset.groupIndex = groupIndex;
+            const isToday = rule['global-relative-from-today'] === 'today'; const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const dayFilterHtml = `<div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Day Filter</h2><div data-container="day-filter-list" class="space-y-4 mb-4"></div><div class="flex items-center gap-4"><select data-control="add-filter-type" class="flex-grow p-2 bg-gray-700 rounded-md"><option value="inclusive_days_of_week">Inclusive Days of Week</option><option value="exclude_holidays">Exclude Holidays</option><option value="days_between">Days Between</option></select><button data-action="add-day-filter" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md">Add Filter</button></div></div>`;
+            formContainer.innerHTML = `<div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Main Information</h2><input type="text" data-path="alias" value="${rule.alias}" class="w-full p-2 bg-gray-700 rounded-md"><div class="pt-2 mt-4 border-t border-gray-700"><label class="flex items-center justify-between cursor-pointer"><span class="text-sm">Ignore Missing Data</span><input type="checkbox" data-path="ignore_missing" ${rule.ignore_missing?'checked':''} class="h-4 w-4 rounded"></label><p data-container="ignore-missing-desc" class="text-xs text-gray-400 mt-2">${rule.ignore_missing ? "No error on missing data." : "Error on missing data."}</p></div></div><div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Global Relative Date</h2><label class="flex items-center justify-between cursor-pointer"><span class="text-sm">Relative from today [${todayStr}]</span><input type="checkbox" data-path="global-relative-from-today" data-rerender="true" ${isToday?'checked':''} class="h-4 w-4 rounded"></label><div data-container="global-relative-date-picker" class="mt-4 ${isToday ? 'hidden' : ''}"><input type="date" data-path="global-relative-from-today" value="${isToday ? new Date().toISOString().split('T')[0] : rule['global-relative-from-today']}" class="w-full p-2 bg-gray-700 rounded-md"></div></div><div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Window Definition</h2><div class="space-y-6"><div data-container="start_date"></div><div data-container="end_date"></div></div></div>${dayFilterHtml}<div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Pattern Filtering</h2><label class="flex items-center"><input type="checkbox" data-path="pattern_filter.enabled" data-rerender="true" ${rule.pattern_filter.enabled?'checked':''} class="h-4 w-4 rounded"><span class="ml-2">Enable Pattern Filtering</span></label><div data-container="pattern-filter-options" class="${rule.pattern_filter.enabled?'':'hidden'} space-y-4 pt-4 border-t border-gray-700"><div class="grid grid-cols-2 gap-4"><input type="number" data-path="pattern_filter.interval" data-rerender="true" value="${rule.pattern_filter.interval}" class="w-full p-2 bg-gray-700 rounded-md"><select data-path="pattern_filter.unit" data-rerender="true" class="w-full p-2 bg-gray-700 rounded-md">${['DAY','WEEK','MONTH'].map(u=>`<option ${rule.pattern_filter.unit===u?'selected':''}>${u}</option>`).join('')}</select></div><p data-container="pattern-description" class="text-sm text-gray-400">${rule.pattern_filter.enabled?`Consider every ${getOrdinal(rule.pattern_filter.interval || 1)} ${rule.pattern_filter.unit.toLowerCase()}.`:''}</p></div></div><div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Aggregate</h2><div class="grid grid-cols-2 gap-4"><select data-path="aggregate.type" data-rerender="true" class="w-full p-2 bg-gray-700 rounded-md">${['MEAN','SUM','MODE','MEDIAN'].map(t=>`<option ${rule.aggregate.type===t?'selected':''}>${t}</option>`).join('')}</select><input type="text" data-path="aggregate.by" value="${rule.aggregate.by}" class="w-full p-2 bg-gray-700 rounded-md"></div></div><div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Effective Dates</h2><div class="space-y-6"><div data-container="effective.start_date"></div><div data-container="effective.end_date"></div></div></div>`;
+            formContainer.querySelector('[data-container="start_date"]').appendChild(createDateBuilder('Start Date', 'start_date', rule.start_date, groupIndex)); formContainer.querySelector('[data-container="end_date"]').appendChild(createDateBuilder('End Date', 'end_date', rule.end_date, groupIndex)); formContainer.querySelector('[data-container="effective.start_date"]').appendChild(createDateBuilder('Effective Start Date', 'effective.start_date', rule.effective.start_date, groupIndex)); formContainer.querySelector('[data-container="effective.end_date"]').appendChild(createDateBuilder('Effective End Date', 'effective.end_date', rule.effective.end_date, groupIndex));
+            renderDayFilters(formContainer, rule.day_filter); 
+            return formContainer;
+        }
+
+        function createDateBuilder(label, dateKey, stateObject, groupIndex) { const gIndexAttr = groupIndex !== null ? `data-group-index="${groupIndex}"` : ''; const container = document.createElement('div'); container.className = 'border border-gray-700 p-4 rounded-md'; const headerId = `${label.toLowerCase().replace(/\s+/g, '-')}-header`; container.innerHTML = `<label id="${headerId}" class="block text-lg font-medium mb-2">${label}</label><select data-action="change-date-type" data-date-key="${dateKey}" ${gIndexAttr} class="w-full p-2 bg-gray-700 rounded-md mb-4"><option value="relative" ${stateObject.type==='relative'?'selected':''}>Relative</option><option value="absolute" ${stateObject.type==='absolute'?'selected':''}>Absolute</option>${dateKey === 'end_date' ? `<option value="relative_to_start" ${stateObject.type==='relative_to_start'?'selected':''}>Relative to Start</option>` : ''}</select><div data-container="date-options"></div>`; const optionsContainer = container.querySelector('[data-container="date-options"]'); if (stateObject.type === 'relative') { optionsContainer.innerHTML = createRelativeOptions(dateKey, stateObject, groupIndex); } else if (stateObject.type === 'absolute') { optionsContainer.innerHTML = createAbsoluteOptions(dateKey, stateObject); } else if (stateObject.type === 'relative_to_start') { optionsContainer.innerHTML = createRelativeToStartOptions(dateKey, stateObject); } container.insertAdjacentHTML('beforeend', createRefinementOptions(dateKey, stateObject, groupIndex)); return container; }
+        
+        function createRelativeOptions(dateKey, state, groupIndex) {
+            const safeState = state['relative-minor'];
+            let dirOpts;
+
+            if (dateKey.includes('effective.end')) {
+                dirOpts = [...DIRECTION_OPTIONS.effectiveEnd]; 
+            } else if (dateKey.includes('effective')) {
+                dirOpts = [...DIRECTION_OPTIONS.effectiveStart]; 
+            } else {
+                dirOpts = DIRECTION_OPTIONS.standard;
+            }
+
+            if (dateKey.includes('effective')) {
+                const rule = groupIndex !== null ? appState.ruleGroups[groupIndex].rule : appState.singleRule;
+                const globalDateValue = rule['global-relative-from-today'];
+                const globalDateText = globalDateValue === 'today'
+                    ? 'Today'
+                    : new Date(globalDateValue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+                dirOpts.push({ value: 'before-global-relative-date', text: `Before ${globalDateText}` });
+                dirOpts.push({ value: 'after-global-relative-date', text: `After ${globalDateText}` });
+            }
+
+            const snapToValue = safeState.snap_to;
+            const showSnap = ['WEEKS','MONTHS','QUARTERS'].includes(safeState.unit);
+            const gIndexAttr = groupIndex !== null ? `data-group-index="${groupIndex}"` : '';
+            let skipWeekendsHtml = '';
+            if (safeState.unit === 'DAYS') {
+                skipWeekendsHtml = `<div class="mt-4 pt-4 border-t border-gray-600/50"><label class="flex items-center justify-between cursor-pointer"><span class="text-sm font-medium text-gray-300">Skip over weekends</span><input type="checkbox" data-path="${dateKey}.relative-minor.skip_weekends" ${safeState.skip_weekends ? 'checked' : ''} class="h-4 w-4 rounded bg-gray-700"></label><p class="text-xs text-gray-400 mt-2 font-light">Day counting will jump over Saturday and Sunday. Ex: 1 day before Monday becomes the preceding Friday.</p></div>`;
+            }
+            const snapButtonsHtml = showSnap ? `<div class="mt-4 pt-4 border-t border-gray-600/50 grid grid-cols-2 gap-3"><button data-action="snap-toggle" data-snap="beginning" data-date-key="${dateKey}" ${gIndexAttr} class="text-sm py-2 rounded-md ${snapToValue==='beginning'?'bg-blue-600 text-white':'bg-gray-500'}">Snap to Beginning</button><button data-action="snap-toggle" data-snap="end" data-date-key="${dateKey}" ${gIndexAttr} class="text-sm py-2 rounded-md ${snapToValue==='end'?'bg-blue-600 text-white':'bg-gray-500'}">Snap to End</button></div>` : '';
+            return `<div class="grid grid-cols-3 gap-3"><input type="number" data-path="${dateKey}.relative-minor.value" value="${safeState.value}" class="w-full p-2 bg-gray-600 rounded-md"><select data-path="${dateKey}.relative-minor.unit" data-rerender="true" class="w-full p-2 bg-gray-600 rounded-md">${UNITS.map(u=>`<option ${safeState.unit===u?'selected':''}>${u}</option>`).join('')}</select><select data-path="${dateKey}.relative-minor.direction" class="w-full p-2 bg-gray-600 rounded-md">${dirOpts.map(o=>`<option value="${o.value}" ${safeState.direction===o.value?'selected':''}>${o.text}</option>`).join('')}</select></div>${skipWeekendsHtml}${snapButtonsHtml}`;
+        }
+
+        function createRefinementOptions(dateKey, state, groupIndex) { const gIndexAttr = groupIndex !== null ? `data-group-index="${groupIndex}"` : ''; const rWeekday = state['refine-by-weekday']; const rDays = state['refine-by-days']; const weekdayOptionsHTML = rWeekday.enabled ? `<div class="grid grid-cols-3 gap-3 p-3 bg-gray-900/50 rounded-md"><select data-path="${dateKey}.refine-by-weekday.position" class="w-full p-2 bg-gray-600 rounded-md">${REFINE_POSITIONS.map(p=>`<option ${rWeekday.position===p?'selected':''}>${p}</option>`).join('')}</select><select data-path="${dateKey}.refine-by-weekday.direction" class="w-full p-2 bg-gray-600 rounded-md">${REFINE_DIRECTIONS.map(d=>`<option ${rWeekday.direction===d?'selected':''}>${d}</option>`).join('')}</select><select data-path="${dateKey}.refine-by-weekday.weekday" class="w-full p-2 bg-gray-600 rounded-md">${DAYS.map(d=>`<option ${rWeekday.weekday===d?'selected':''}>${d}</option>`).join('')}</select></div>` : ''; const daysOptionsHTML = rDays.enabled ? `<div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 p-3 bg-gray-900/50 rounded-md"><input type="number" data-path="${dateKey}.refine-by-days.value" value="${rDays.value||0}" class="w-full p-2 bg-gray-600 rounded-md"><span class="text-sm">days</span><select data-path="${dateKey}.refine-by-days.direction" class="w-full p-2 bg-gray-600 rounded-md">${REFINE_DIRECTIONS.map(d=>`<option ${rDays.direction===d?'selected':''}>${d}</option>`).join('')}</select></div>` : ''; return `<div class="mt-4 pt-4 border-t border-gray-600/50 space-y-2"><div class="flex gap-4"><button data-action="refine-toggle" data-refine-type="weekday" data-date-key="${dateKey}" ${gIndexAttr} class="flex-1 text-sm py-2 rounded-md ${rWeekday.enabled?'bg-blue-600 text-white font-semibold':'bg-gray-600 hover:bg-gray-500'}">Refine by Weekday</button><button data-action="refine-toggle" data-refine-type="days" data-date-key="${dateKey}" ${gIndexAttr} class="flex-1 text-sm py-2 rounded-md ${rDays.enabled?'bg-blue-600 text-white font-semibold':'bg-gray-600 hover:bg-gray-500'}">Refine by Days</button></div><div class="mt-2 space-y-2">${weekdayOptionsHTML}${daysOptionsHTML}</div></div>`; }
+        function createAbsoluteOptions(dateKey, state) { return `<input type="date" data-path="${dateKey}.value" value="${state.value}" class="w-full p-2 bg-gray-600 rounded-md">`; }
+        function createRelativeToStartOptions(dateKey, state) { const isZero=state.value===0; return `<div class="grid grid-cols-2 gap-3"><input type="number" data-path="${dateKey}.value" data-rerender="true" value="${state.value}" class="w-full p-2 bg-gray-600 rounded-md"><select data-path="${dateKey}.unit" ${isZero?'disabled':''} class="w-full p-2 bg-gray-600 rounded-md ${isZero?'opacity-50':''}">${UNITS.map(u=>`<option ${state.unit===u?'selected':''}>${u}</option>`).join('')}</select></div>`; }
+        
+        function renderDayFilters(formContainer, dayFilterState) { const el = formContainer.querySelector('[data-container="day-filter-list"]'); el.innerHTML = ''; dayFilterState.forEach((filter, index) => { const fEl = document.createElement('div'); fEl.className='bg-gray-700 p-3 rounded-md flex items-center justify-between'; let content=''; if(filter.type==='inclusive_days_of_week') { content=`<div class="flex-grow"><p class="font-medium">Inclusive Days of Week</p><div class="flex flex-wrap gap-x-4 gap-y-1 mt-2">${DAYS.map(d=>`<label class="flex items-center text-sm"><input type="checkbox" data-path="day_filter.${index}.days" data-day="${d}" ${filter.days.includes(d)?'checked':''} class="h-4 w-4 rounded"><span class="ml-1.5">${d}</span></label>`).join('')}</div></div>`; } else if (filter.type === 'exclude_holidays') { content=`<p class="flex-grow font-medium">Exclude Holidays</p>`; } else { content=`<div class="flex-grow flex items-center gap-2"><span class="text-sm">Days between</span><select data-path="day_filter.${index}.lower_bound" class="p-1 bg-gray-600 rounded">${Array.from({length:31},(_,i)=>`<option value="${i+1}" ${filter.lower_bound===i+1?'selected':''}>${getOrdinal(i+1)}</option>`).join('')}</select> and <select data-path="day_filter.${index}.upper_bound" class="p-1 bg-gray-600 rounded">${Array.from({length:31},(_,i)=>`<option value="${i+1}" ${filter.upper_bound===i+1?'selected':''}>${getOrdinal(i+1)}</option>`).join('')}</select></div>`; } fEl.innerHTML = content + `<button data-action="remove-day-filter" data-day-filter-index="${index}" class="ml-4 bg-red-600 text-white py-1 px-2 rounded text-xs">Remove</button>`; el.appendChild(fEl); }); }
+
+        // --- UI Rendering ---
+        function rerender() {
+            mainRuleContainerEl.innerHTML = '';
+            if (appState.advancedModeEnabled) {
+                const assignedDays = new Set(appState.ruleGroups.flatMap(g => g.days));
+                appState.ruleGroups.forEach((group, index) => {
+                    const groupWrapper = document.createElement('div'); groupWrapper.className = 'group-container'; groupWrapper.innerHTML = `<div class="group-header"><h2 class="text-2xl font-bold text-teal-300">Group ${index + 1}</h2>${index > 0 ? `<button data-action="remove-group" data-group-index="${index}" class="bg-red-600 text-white py-1 px-3 rounded text-sm">Remove</button>` : '<div></div>'}</div>`;
+                    const daySelector = document.createElement('div'); daySelector.innerHTML = '<p class="font-medium mb-2">Rule applies to these days:</p>';
+                    const dayGrid = document.createElement('div'); dayGrid.className = 'flex flex-wrap gap-x-4 gap-y-2';
+                    DAYS.forEach(day => { const isChecked=group.days.includes(day); const isDisabled=!isChecked&&assignedDays.has(day); dayGrid.innerHTML += `<label class="flex items-center text-sm ${isDisabled ? 'day-selector-disabled' : 'cursor-pointer'}"><input type="checkbox" data-action="toggle-day" data-group-index="${index}" data-day="${day}" ${isChecked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''} class="h-4 w-4 rounded bg-gray-600 text-teal-500"><span class="ml-1.5">${day}</span></label>`; });
+                    daySelector.appendChild(dayGrid); groupWrapper.appendChild(daySelector); groupWrapper.appendChild(document.createElement('hr')).className = 'my-6 border-gray-700'; groupWrapper.appendChild(createCompleteRuleForm(group.rule, index)); mainRuleContainerEl.appendChild(groupWrapper);
+                });
+                if (assignedDays.size < DAYS.length) { mainRuleContainerEl.innerHTML += `<button data-action="add-group" class="w-full bg-teal-600 hover:bg-teal-700 font-semibold py-3 px-4 rounded-md mt-4">Add Rule Group</button>`; }
+            } else {
+                mainRuleContainerEl.appendChild(createCompleteRuleForm(appState.singleRule, null));
+            }
+            publishJsonUpdate();
+        }
+        
+        // --- Event Handlers ---
+        mainRuleContainerEl.addEventListener('input', e => {
+            const target = e.target;
+            const path = target.dataset.path;
+            if (!path) return;
+            
+            const rule = getRuleFromTarget(target);
+            if (!rule) return;
+            
+            let value;
+
+            if (path.includes('day_filter') && path.endsWith('.days') && target.dataset.day) {
+                const day = target.dataset.day;
+                const currentDaysPath = path;
+                const parentPath = currentDaysPath.substring(0, currentDaysPath.lastIndexOf('.'));
+                const filterObject = getValueByPath(rule, parentPath);
+                
+                const currentDays = filterObject.days || [];
+                const daySet = new Set(currentDays);
+
+                if (target.checked) daySet.add(day);
+                else daySet.delete(day);
+
+                value = Array.from(daySet).sort((a,b) => DAYS.indexOf(a) - DAYS.indexOf(b));
+                setValueByPath(rule, currentDaysPath, value);
+                publishJsonUpdate();
+                return;
+            }
+
+            value = target.type === 'checkbox' ? target.checked : (target.type === 'number' ? parseInt(target.value) || 0 : target.value);
+
+            if (path === 'global-relative-from-today' && target.type === 'checkbox') {
+                value = value ? 'today' : new Date().toISOString().split('T')[0];
+            }
+            
+            setValueByPath(rule, path, value);
+            
+            // --- START CHANGE 1 ---
+            // If the unit was just changed to QUARTERS, enforce snap_to.
+            if (path.endsWith('.relative-minor.unit') && value === 'QUARTERS') {
+                const minorPath = path.substring(0, path.lastIndexOf('.'));
+                const minorState = getValueByPath(rule, minorPath);
+                if (minorState.snap_to === null) {
+                    setValueByPath(rule, `${minorPath}.snap_to`, 'beginning');
+                }
+            }
+            // --- END CHANGE 1 ---
+            
+            if (target.dataset.rerender) {
+                rerender();
+            } else {
+                if(path === 'ignore_missing') {
+                    target.closest('[data-form-container]').querySelector('[data-container="ignore-missing-desc"]').textContent = value ? "No error on missing data." : "Error on missing data.";
+                }
+                publishJsonUpdate();
+            }
+        });
+
+        mainRuleContainerEl.addEventListener('click', e => { const button = e.target.closest('button[data-action]'); if (!button) return; const action = button.dataset.action; if (action === 'add-group') { appState.ruleGroups.push({ days: [], rule: deepClone(appState.ruleGroups[0].rule) }); rerender(); return; } const groupIndex = button.dataset.groupIndex !== undefined ? parseInt(button.dataset.groupIndex, 10) : null; if (action === 'remove-group') { if (groupIndex !== null) { appState.ruleGroups.splice(groupIndex, 1); rerender(); } return; } const rule = getRuleFromTarget(button); if (!rule) return; if (action === 'refine-toggle') { const dateKey = button.dataset.dateKey; const type = button.dataset.refineType; const prop = `refine-by-${type}`; const dateState = getValueByPath(rule, dateKey); dateState[prop].enabled = !dateState[prop].enabled; if(dateState[prop].enabled) { const otherProp = type === 'weekday' ? 'refine-by-days' : 'refine-by-weekday'; dateState[otherProp].enabled = false; } rerender(); } else if (action === 'snap-toggle') {
+            const dateKey = button.dataset.dateKey;
+            const snapVal = button.dataset.snap;
+            const dateState = getValueByPath(rule, dateKey);
+            
+            // --- START CHANGE 2 ---
+            const minorState = dateState['relative-minor'];
+            const isQuarter = minorState.unit === 'QUARTERS';
+            
+            // Allow toggle only if it's NOT a quarter, OR if they are clicking a different button.
+            // This prevents un-toggling the active button for quarters.
+            if (!isQuarter || minorState.snap_to !== snapVal) {
+                minorState.snap_to = minorState.snap_to === snapVal ? null : snapVal;
+            }
+            // --- END CHANGE 2 ---
+
+            rerender(); 
+        } else if (action === 'add-day-filter') { const type = button.previousElementSibling.value; const ruleToUpdate = getRuleFromTarget(button); if (type === 'inclusive_days_of_week') ruleToUpdate.day_filter.push({ type, days: [] }); else if (type === 'exclude_holidays') ruleToUpdate.day_filter.push({ type }); else ruleToUpdate.day_filter.push({ type, lower_bound: 1, upper_bound: 15 }); rerender(); } else if (action === 'remove-day-filter') { const ruleToUpdate = getRuleFromTarget(button); ruleToUpdate.day_filter.splice(parseInt(button.dataset.dayFilterIndex), 1); rerender(); } });
+        
+        mainRuleContainerEl.addEventListener('change', e => { const select = e.target.closest('select[data-action]'); if(!select) return; const action = select.dataset.action; if (action === 'change-date-type') { const newType = select.value; const dateKey = select.dataset.dateKey; const rule = getRuleFromTarget(select); if(!rule) return; const dateState = getValueByPath(rule, dateKey); const refinements = {"refine-by-weekday": dateState["refine-by-weekday"], "refine-by-days": dateState["refine-by-days"]}; Object.keys(dateState).forEach(key => delete dateState[key]); dateState.type = newType; if (newType === 'relative') { dateState['relative-minor'] = { value: 1, unit: 'WEEKS', direction: 'AGO', snap_to: null, skip_weekends: false }; if (dateKey.startsWith('effective')) dateState['relative-minor'].direction = 'after-end-date'; } else if (newType === 'absolute') { dateState.value = new Date().toISOString().split('T')[0]; } else if (newType === 'relative_to_start') { dateState.value = 3; dateState.unit = 'MONTHS'; } dateState["refine-by-weekday"] = refinements["refine-by-weekday"]; dateState["refine-by-days"] = refinements["refine-by-days"]; rerender(); } });
+        document.body.addEventListener('click', e => { if (e.target.dataset.action === 'toggle-day') { const button = e.target; const groupIndex = parseInt(button.dataset.groupIndex); const day = button.dataset.day; const daySet = new Set(appState.ruleGroups[groupIndex].days); if(button.checked) daySet.add(day); else daySet.delete(day); appState.ruleGroups[groupIndex].days = Array.from(daySet).sort((a,b)=>DAYS.indexOf(a)-DAYS.indexOf(b)); rerender(); } });
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            advancedModeToggleEl.addEventListener('change', (e) => { appState.advancedModeEnabled = e.target.checked; if (appState.advancedModeEnabled && appState.ruleGroups.length === 0) { const newGroupRule = deepClone(initialRuleState_full); appState.ruleGroups.push({ days: [...DAYS], rule: newGroupRule }); } rerender(); });
+            copyJsonBtn.addEventListener('click', () => { navigator.clipboard.writeText(jsonOutputEl.textContent).then(() => { copyJsonBtn.textContent = 'Copied!'; setTimeout(() => { copyJsonBtn.textContent = 'Copy JSON'; }, 2000); }); });
+            rerender();
+        });
+    </script>
+
+
+<script type="py">
+from js import document, console, setTimeout
+from pyodide.ffi import create_proxy
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from datetime import date, datetime
+from dateutil.relativedelta import relativedelta
+
+# ===================================================================
+# NEW HELPER FUNCTION FOR INPUT VALIDATION
+# ===================================================================
+
+def _parse_date_input(input_date) -> date:
+    """
+    Parses various input types (date, datetime, string) into a date object.
+    Raises TypeError or ValueError for invalid inputs.
+    """
+    if isinstance(input_date, datetime):
+        return input_date.date()
+    if isinstance(input_date, date):
+        return input_date
+    if isinstance(input_date, str):
+        try:
+            # Handles ISO format 'YYYY-MM-DD' and also 'YYYY-MM-DDTHH:MM:SS...'
+            return datetime.fromisoformat(input_date).date()
+        except ValueError:
+            raise ValueError(f"Date string '{input_date}' is not in a valid ISO format (e.g., 'YYYY-MM-DD').")
+    
+    # If it's none of the above, it's an unsupported type
+    raise TypeError(f"Unsupported type for date input: {type(input_date)}. Expected date, datetime, or string.")
+
+
+# ===================================================================
+# UNIFIED HELPER FUNCTIONS (for a single quarter step)
+# (No changes needed here, as the input will now be clean)
+# ===================================================================
+
+# --- Default Calendar Quarters ---
+def _get_previous_quarter_default(ref_date: date) -> dict:
+    """Calculates the start and end dates of the immediately preceding standard calendar quarter."""
+    
+    # 1. Find the first day of the quarter that ref_date is in.
+    #    For 2015-07-22, this is 2015-07-01.
+    first_day_of_current_quarter = date(ref_date.year, 3 * ((ref_date.month - 1) // 3) + 1, 1)
+    
+    # 2. The end date of the previous quarter is one day before that.
+    #    For 2015-07-01, this is 2015-06-30.
+    end_date = first_day_of_current_quarter - relativedelta(days=1)
+    
+    # 3. The start date of the previous quarter is the first day of its starting month.
+    #    We can find this by taking the end_date, going to the first day of its month,
+    #    and then subtracting two months.
+    #    - end_date = 2015-06-30
+    #    - First day of its month = 2015-06-01
+    #    - Subtract 2 months = 2015-04-01
+    start_date = end_date.replace(day=1) - relativedelta(months=2)
+    
+    return {"start_date": start_date, "end_date": end_date}
+
+def _get_next_quarter_default(ref_date: date) -> dict:
+    first_day_of_current_quarter = date(ref_date.year, 3 * ((ref_date.month - 1) // 3) + 1, 1)
+    start_date = first_day_of_current_quarter + relativedelta(months=3)
+    end_date = start_date + relativedelta(months=3, days=-1)
+    return {"start_date": start_date, "end_date": end_date}
+
+# --- Inteplast Fiscal Quarters ---
+def _get_previous_quarter_inteplast(ref_date: date) -> dict:
+    month, year = ref_date.month, ref_date.year # This will now work
+    if month == 1: return {"start_date": date(year - 1, 8, 1), "end_date": date(year - 1, 10, 31)}
+    elif 2 <= month <= 4: return {"start_date": date(year - 1, 11, 1), "end_date": date(year, 1, 31)}
+    elif 5 <= month <= 7: return {"start_date": date(year, 2, 1), "end_date": date(year, 4, 30)}
+    elif 8 <= month <= 10: return {"start_date": date(year, 5, 1), "end_date": date(year, 7, 31)}
+    elif 11 <= month <= 12: return {"start_date": date(year, 8, 1), "end_date": date(year, 10, 31)}
+
+def _get_next_quarter_inteplast(ref_date: date) -> dict:
+    month, year = ref_date.month, ref_date.year # This will now work
+    if month == 1: return {"start_date": date(year, 2, 1), "end_date": date(year, 4, 30)}
+    elif 2 <= month <= 4: return {"start_date": date(year, 5, 1), "end_date": date(year, 7, 31)}
+    elif 5 <= month <= 7: return {"start_date": date(year, 8, 1), "end_date": date(year, 10, 31)}
+    elif 8 <= month <= 10: return {"start_date": date(year, 11, 1), "end_date": date(year + 1, 1, 31)}
+    elif 11 <= month <= 12: return {"start_date": date(year + 1, 2, 1), "end_date": date(year + 1, 4, 30)}
+
+# ===================================================================
+# UNIFIED N-QUARTER FUNCTIONS
+# ===================================================================
+
+def _get_nth_quarter_generic(ref_date: date, n: int, step_func: callable) -> dict:
+    if n < 1: raise ValueError("Number of quarters 'n' must be 1 or greater for stepping.")
+    current_date = ref_date
+    quarter_dates = {}
+    for _ in range(n):
+        quarter_dates = step_func(current_date)
+        current_date = quarter_dates['start_date']
+    return quarter_dates
+
+# ===================================================================
+# DISPATCHER FUNCTIONS (The public interface with validation)
+# ===================================================================
+
+def get_nth_quarter_default(anchor_date, n: int) -> dict:
+    """
+    Gets the start/end of the Nth calendar quarter relative to an anchor date.
+    """
+    # *** ADDED VALIDATION STEP ***
+    processed_date = _parse_date_input(anchor_date)
+
+    if n > 0:
+        return _get_nth_quarter_generic(processed_date, n, _get_previous_quarter_default)
+    elif n < 0:
+        return _get_nth_quarter_generic(processed_date, abs(n), _get_next_quarter_default)
+    elif n == 0:
+        next_q = _get_next_quarter_default(processed_date)
+        return _get_previous_quarter_default(next_q['start_date'])
+
+def get_nth_quarter_inteplast(anchor_date, n: int) -> dict:
+    """
+    Gets the start/end of the Nth Inteplast fiscal quarter relative to an anchor date.
+    """
+    # *** ADDED VALIDATION STEP ***
+    processed_date = _parse_date_input(anchor_date)
+    
+    if n > 0:
+        return _get_nth_quarter_generic(processed_date, n, _get_previous_quarter_inteplast)
+    elif n < 0:
+        return _get_nth_quarter_generic(processed_date, abs(n), _get_next_quarter_inteplast)
+    elif n == 0:
+        next_q = _get_next_quarter_inteplast(processed_date)
+        return _get_previous_quarter_inteplast(next_q['start_date'])
+
+# ===================================================================
+# FINAL EXPORT DICTIONARY
+# ===================================================================
+
+get_nth_quarter_func_dict = {
+    "default": get_nth_quarter_default, 
+    "inteplast": get_nth_quarter_inteplast
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import json
+from datetime import date, datetime, timedelta
+from dateutil.relativedelta import relativedelta
+import holidays
+from dateutil.rrule import rrule, DAILY, WEEKLY, MONTHLY, MO, TU, WE, TH, FR, SA, SU
+# from quarter_helper_functions import get_nth_quarter_func_dict
+
+
+
+
+
+
+
+class DateRuleParser:
+    us_holidays = holidays.US()
+
+    def __init__(self, rule_dict):
+        """
+        Initializes the DateRuleParser with a dictionary containing the date rule.
+        """
+        if not isinstance(rule_dict, dict):
+            raise TypeError("rule_dict must be a dictionary.")
+        
+        self.rule_dict = rule_dict
+        self.global_anchor = self.parse_global_relative_anchor() #today unless explicitly otherwise
+
+        self._assign_day_specific_ruleDict() #will updates self.rule_dict if day specific ruling is enabled
+
+        self.start_date = None
+        self.end_date = None
+        self.valid_intra_start_end_dates = None
+        self.effective_start_date = None
+        self.effective_end_date = None
+        self.generate_dates()   
+
+    def _assign_day_specific_ruleDict(self):
+        rule_dict = self.rule_dict
+        #if there is no group-1 then day specific rules are not enabled
+        if rule_dict.get("group-1") is None:
+            return
+    
+        day_dict = {"Monday":0,"Tuesday":1, "Wednesday":2, "Thursday":3, "Friday":4,"Saturday":5,"Sunday":6}
+        weekday = self.global_anchor.weekday()
+
+        for i in range(7):
+            group_i_rule = rule_dict.get(f"group-{i+1}")
+            if group_i_rule is not None:
+                rule_specific_days = group_i_rule.get("rule_specific_days")
+    
+                if rule_specific_days is None:
+                    raise KeyError(f"Day specific rules are enabled yet group-{i+1} doesn't have rule_specific_days key")
+
+                for day in rule_specific_days:
+                    #if self.global_anchor's weekday is in group-i's rule_specific_days then we use that specific rule for the rest of the program
+                    if day_dict[day] == weekday:
+                        self.rule_dict = group_i_rule
+                        return
+            #this break isn't neccessary for control flow, but should save a couple zeptoseconds!
+            else:
+                break
+        raise AssertionError("Day specific rules are enabled yet the global_anchor day is not in any")
+        
+
+    def parse_global_relative_anchor(self):
+        glob_rel_from_td = self.rule_dict.get("global-relative-from-today")
+        if glob_rel_from_td is not None:
+            if glob_rel_from_td == "today":
+                return date.today()
+            else:
+                return DateRuleParser._absolute_to_dateObject(glob_rel_from_td)
+        else:
+            return date.today()
+        
+    def generate_dates(self):
+        self._calc_start_date()
+        self._calc_end_date()
+        self._calc_valid_intra_start_end_dates()
+
+        if self.start_date is None:
+            raise ValueError("start_date was calculated to be None")
+        if self.end_date is None:
+            raise ValueError("end_date was calculated to be None")
+
+        
+        #effective doesn't exist for older verions of this class
+        #going forward, all JSONs should have an effective field
+        if self.rule_dict.get("effective") is not None:
+            self._calc_effective_start_date()
+            self._calc_effective_end_date()
+
+    def __str__(self):
+        # Check if dates have been calculated; provide a default message if not.
+        if self.start_date is None or self.end_date is None:
+            return "DateRuleParser (dates have not been generated yet)"
+
+        # Use f-strings for cleaner formatting. No .date() call is needed.
+        message = f"Start Date: {self.start_date}\n"
+        message += f"End Date: {self.end_date}\n"
+
+        # Safely check if filtered_dates has been populated before trying to print it.
+        if self.valid_intra_start_end_dates is not None:
+            message += f"\nValid Dates between Start and End ({len(self.valid_intra_start_end_dates)}):"
+            # Join the first few dates for a clean preview
+            #date_preview = "\n  ".join(map(str, self.valid_intra_start_end_dates[:20]))
+            date_preview = "\n  ".join(map(str, self.valid_intra_start_end_dates[:]))
+            message += f"\n  {date_preview}"
+            # if len(self.valid_intra_start_end_dates) > 20:
+            #     message += "\n  ..."
+        
+        message += "\n\n"
+        message += f"Effective Start Date: {self.effective_start_date}\n"
+        message += f"Effective End Date: {self.effective_end_date}\n"
+        return message
+
+    def get_results_dict(self):
+        return {"start_date":self.start_date, "end_date": self.end_date, "valid days inbetween start and end":self.valid_intra_start_end_dates,
+                "effective_start_date":self.effective_start_date, "effective_end_date":self.effective_end_date}
+
+    def _calc_start_date(self):
+        start_date_rule = self.rule_dict["start_date"]
+        #anchor_date = date.today() if start_date_rule.get("start_date") == "today" else DateRuleParser._absolute_to_dateObject(start_date_rule["start_date"])
+        anchor_date = self.global_anchor #used to be date.today
+        self.start_date = self._calc_date(start_date_rule, anchor_date=anchor_date)
+        return self.start_date
+    
+    def _calc_end_date(self):
+        end_date_rule = self.rule_dict["end_date"]
+        anchor_date = None
+    
+        if end_date_rule["type"] == "relative_to_start":
+            anchor_date = self.start_date
+        else:
+            anchor_date = self.global_anchor
+
+        self.end_date = self._calc_date(end_date_rule, anchor_date=anchor_date)
+        return self.end_date
+    
+    def _calc_effective_start_date(self):
+        effective_start_date_rule = self.rule_dict["effective"]["start_date"]
+        anchor_date = self.global_anchor #used to be date.today()
+        if effective_start_date_rule.get("relative-minor") is not None:
+            directions_from_end_date = ["after-end-date","before-end-date"]
+            directions_from_GRD = ["before-global-relative-date","after-global-relative-date"]
+            direction = effective_start_date_rule.get("relative-minor").get("direction")
+            
+            if direction is None:
+                raise ValueError("Effective Start Date is missing 'direction' field")
+            
+            #set anchor_date depending on what the direction is relative to
+            if direction in directions_from_end_date:
+                anchor_date = self.end_date
+            elif direction in directions_from_GRD:
+                anchor_date = self.global_anchor
+            if anchor_date is None:
+                raise ValueError("effective_start_date's anchor_date is none when it shoudln't be")
+            
+        else:
+            # anchor_date = self.end_date if effective_start_date_rule.get("start_date") == "end_date" else DateRuleParser._absolute_to_dateObject(effective_start_date_rule["start_date"])
+            pass
+        if anchor_date is None:
+            raise ValueError("anchor_date within _calc_effective_start_date must not be None")
+        self.effective_start_date = self._calc_date(effective_start_date_rule, anchor_date=anchor_date)
+        return self.effective_start_date
+    
+    def _calc_effective_end_date(self):
+        effective_end_date_rule = self.rule_dict["effective"]["end_date"]
+        # anchor_date = self.end_date if effective_end_date_rule.get("start_date") =="end_date" else DateRuleParser._absolute_to_dateObject(effective_end_date_rule["start_date"])
+        # #effective end date has special direction option "After Effective Start Date"
+        # if effective_end_date_rule["relative-minor"].get("direction") == "after-effective-start-date":
+        #     anchor_date = self.effective_start_date
+        anchor_date = None
+        if effective_end_date_rule.get("relative-minor") is not None:
+            directions_from_end_date = ["after-end-date","before-end-date"]
+            directions_from_GRD = ["before-global-relative-date","after-global-relative-date"]
+            direction = effective_end_date_rule.get("relative-minor").get("direction")
+            
+            if direction is None:
+                raise ValueError("Effective End Date is missing 'direction' field")
+            
+            #set anchor_date depending on what the direction is relative to
+            if direction == "after-effective-start-date":
+                anchor_date = self.effective_start_date
+            elif direction in directions_from_end_date:
+                anchor_date = self.end_date
+            elif direction in directions_from_GRD:
+                anchor_date = self.global_anchor
+        self.effective_end_date = self._calc_date(effective_end_date_rule, anchor_date=anchor_date)
+
+
+        #once effective_end_date has been initially calculated we extend to following day if neccessary
+        extend_from = effective_end_date_rule.get("extend_from") 
+        extend_to = effective_end_date_rule.get("extend_to") 
+        if extend_from is not None and extend_to is not None:
+            day_dict = {"Monday":0,"Tuesday":1, "Wednesday":2, "Thursday":3, "Friday":4,"Saturday":5,"Sunday":6}
+            #check the current effective_end_date is the same day of the week as extend_from
+            #if it is, we extend effective_end_date to the next day of teh week as specificied by extend_to
+            if self.effective_end_date.weekday() == day_dict[extend_from]:
+                days_ahead = (day_dict[extend_to] - self.effective_end_date.weekday() + 7) % 7
+                days_ahead = days_ahead or 7 #if days_ahead==0 then set to 7 to skip 1 whole week
+                self.effective_end_date += timedelta(days=days_ahead)
+        return self.effective_end_date
+
+    def _calc_valid_intra_start_end_dates(self):
+        #calculate start/end dates if they haven't already been
+        if self.start_date is None:
+            self._calc_start_date()
+        if self.end_date is None:
+            self._calc_end_date()
+
+        start_date = self.start_date
+        end_date = self.end_date
+        pattern_filter_dict = self.rule_dict.get("pattern_filter") #pattern_filter may not be a key
+        day_filter_arrDict = self.rule_dict["day_filter"] #day_filter will be a key
+
+        self.valid_intra_start_end_dates = self._calc_valid_dates_list(start_date, end_date, pattern_filter_dict, day_filter_arrDict)
+        
+        return self.valid_intra_start_end_dates
+
+    #TODO: calc_valid_effective_intra_start_end_dates using above as reference
+        
+    @staticmethod
+    def _calc_valid_dates_list(start_date, end_date, pattern_filter_dict, day_filter_arrDict):
+        if start_date > end_date:
+            return "start_date must be less than or equal to end_date"
+
+        intra_start_end_dates = None
+        #"pattern filter" field only exists if it's not Null 
+        if pattern_filter_dict is not None:
+            intra_start_end_dates = DateRuleParser._pattern_filtering(pattern_filter_dict, start_date, end_date)
+        else:
+            #inclusive
+            #ensure rrule, which yields datetimes, is converted to date objects
+            intra_start_end_dates = [dt.date() for dt in rrule(DAILY, dtstart=start_date, until=end_date)]
+        
+        for item in day_filter_arrDict:
+            if item["type"] == "inclusive_days_of_week":
+                intra_start_end_dates = DateRuleParser._weekday_filtering(item["days"], intra_start_end_dates)
+            if item["type"] == "exclude_holidays":
+                intra_start_end_dates = [d for d in intra_start_end_dates if d not in DateRuleParser.us_holidays]
+            if item["type"] == "days_between":
+                #inclusive
+                lower_bound = int(item["lower_bound"])
+                upper_bound = int(item["upper_bound"])
+                intra_start_end_dates = [d for d in intra_start_end_dates if (d.day >= lower_bound and d.day <= upper_bound)]
+
+            #TODO: Exclude Holidays and Days Between
+        
+        return intra_start_end_dates
+        
+
+    
+    @staticmethod
+    def _calc_date(dateRule_dict, anchor_date):
+        if not isinstance(dateRule_dict, dict):
+            raise TypeError("dateRule_dict must be a dictionary.") 
+        if anchor_date is None:
+            raise TypeError("anchor_date must not be None type in _calc_date") 
+        
+        if dateRule_dict["type"] == "anchored":
+            return DateRuleParser._anchored_to_dateObject(dateRule_dict["anchored"], anchor_date=anchor_date)
+        elif dateRule_dict["type"] == "relative":
+            return DateRuleParser._relative_to_dateObject(dateRule_dict, anchor_date=anchor_date)
+        elif dateRule_dict["type"] == "absolute":
+            return DateRuleParser._absolute_to_dateObject(dateRule_dict["value"])
+        elif dateRule_dict["type"] == "fiscal":
+            pass #TODO: add fiscal
+        elif dateRule_dict["type"] == "relative_to_start":
+            return DateRuleParser._relativeToStartDate_to_dateObject(relativeToStartDate_dict=dateRule_dict,start_date=anchor_date)
+        else:
+            raise Exception("dateRule_dict didn't have a valid " \
+            "date type (anchored, relative, absolute, or fiscal)")
+        
+    #string_date should be in YYYY-MM-DD format
+    @staticmethod
+    def _absolute_to_dateObject(string_date):
+        format_string = "%Y-%m-%d"
+        # Convert the string to a datetime, then date object
+        dateObject = datetime.strptime(string_date, format_string).date()
+        return dateObject
+
+
+    
+    #returns a date object offset from anchor_date (defaults to today's date) with parameters from relative_dict
+    @staticmethod
+    def _relativeMinor_to_dateObject(relative_dict, anchor_date):
+        if relative_dict.get("unit") is None:
+            raise ValueError("relative_dict in _relativeMinor_to_dateObject has no 'unit' key")
+        if relative_dict.get("value") is None:
+            raise ValueError("relative_dict in _relativeMinor_to_dateObject has no 'value' key")
+        if relative_dict.get("direction") is None:
+            raise ValueError("relative_dict in _relativeMinor_to_dateObject has no 'direction' key")
+        if anchor_date is None:
+            raise ValueError("anchor_date in _relativeMinor_to_dateObject can not be None")
+        
+        
+        relative_d_params = {relative_dict["unit"].lower() : relative_dict["value"]}
+
+        #quarter isn't a standard time unit defined in python's date library
+        #plus, we automatically snap to start or end of quarter
+        quarter_value = relative_d_params.get("quarter") or relative_d_params.get("quarters")
+        if quarter_value is not None:
+            quarter_snap = relative_dict.get("snap_to")
+            if quarter_snap is None:
+                raise ValueError("Date unit is 'quarter' yet does not have required 'snap-to' attribute")
+            #specifically for inteplast which has special quarter definition
+            #as of right now, quarter_modifier must be inserted manually into JSON; not UI option
+            quarter_modifier = relative_dict.get("quarter_modifier") or "default" #quarter_modifier key-value may not exist
+            
+            return DateRuleParser._quarter_relativeMinor_helper(quarter_value, quarter_snap, anchor_date, relative_dict["direction"], quarter_modifier=quarter_modifier)
+
+        relative_delta = relativedelta(**relative_d_params)
+        relative_date = None
+        #spent last 2 hours chasing bug becuase forgot to decapitalize 2 letters
+        backward_direction = ["AGO","Before End Date", "before-end-date", "before-global-relative-date"]
+        forward_direction = ["FROM NOW","After End Date","after-end-date", "after-effective-start-date", "after-global-relative-date"]
+        #If DAYS then need to check for skip weekend option. No other unit has skip_weekends option
+        if relative_dict["unit"] == "DAYS" and relative_dict.get("skip_weekends") is True:
+                current_date = anchor_date
+                nonweekend_days_skipped = 0
+                direction = -1 if relative_dict["direction"] in backward_direction else 1
+                while nonweekend_days_skipped < relative_dict["value"]:
+                    current_date += timedelta(days=direction)
+                    if current_date.weekday() < 5:  # Monday=0, Sunday=6
+                        nonweekend_days_skipped += 1
+                relative_date = current_date
+        else:
+            if relative_dict["direction"] in backward_direction:
+                relative_date = anchor_date - relative_delta
+            elif relative_dict["direction"] in forward_direction:
+                relative_date = anchor_date + relative_delta
+        if relative_date is None:
+            raise ValueError("relative_date in _relativeMinor_to_dateObject should not still be None")
+        #optional snap to button will snap to the start or end of what ever time unit relative_date is in up to this point
+        #ex) if, up to this point, relative_date is Thursday, July 3rd 2025 and unit="WEEK" then snap_to=="beginning" will alter
+        #relative_date to the start of that week (ie set relative_date to Monday, June 30th 2025)
+        snap_to = relative_dict.get("snap_to")
+        if snap_to is not None:
+            if relative_dict["unit"] == "MONTHS":
+                #if snap_to == "beginning" then just move to first day of the month
+                relative_date = relative_date.replace(day=1)
+                if snap_to == "end":
+                    #if snapping to end, it's the first of the next month minus 1 day
+                    relative_date = relative_date + relativedelta(months=1, days=-1)
+
+            if relative_dict["unit"] == "WEEKS":
+                days_from_monday = relative_date.weekday()
+                if snap_to == "beginning":
+                    relative_date = relative_date - timedelta(days=days_from_monday)
+                elif snap_to == "end":
+                    days_until_sunday = 6 - days_from_monday
+                    relative_date = relative_date + timedelta(days=days_until_sunday)
+
+        return relative_date
+
+    #extra
+    @staticmethod
+    def _quarter_relativeMinor_helper(quarter_value, quarter_snap, anchor_date, direction, quarter_modifier="default"):
+        if direction in ["FROM NOW","After End Date","after-end-date", "after-effective-start-date", "after-global-relative-date"]:
+            quarter_value *= -1
+        """
+        Gets the start/end of the Nth calendar quarter relative to an anchor date.
+        n > 0: Nth quarter in the past.
+        n < 0: Nth quarter in the future.
+        n = 0: The current quarter.
+        """
+        previous_n_quarter_func = get_nth_quarter_func_dict.get(quarter_modifier)
+        if previous_n_quarter_func is None:
+            raise ValueError(f"The value of the quarter_modifier field is '{quarter_modifier}' which is not valid. Try 'standard' (default) or 'inteplast'")
+        
+        q_start_end_dict = previous_n_quarter_func(anchor_date, quarter_value)
+
+        
+        if quarter_snap == "beginning":
+            return q_start_end_dict["start_date"]
+        elif quarter_snap == "end":
+            return q_start_end_dict["end_date"]
+        else:
+            raise ValueError(f"quarter_snap value is {quarter_snap}. Must be 'beginning' or 'end'")
+
+    #the final anchored_date will always be on or anchor_date
+        #For instance, anchored_dict = {"Position":"SECOND","day":"Friday","in":{"type":"relative","value":3,"unit":"MONTHS","direction":"FROM NOW"}}
+        #anchored_date will be the second Friday AFTER 3 months from now. If 3 months from now was a Friday, the final anchored_date would be the following
+        #Friday because that first day 3 months from now would be count as the first Friday.
+    @staticmethod
+    def _refine_by_weekday(refine_by_weekday_dict, anchor_date):
+        day_dict = {"Monday":0,"Tuesday":1, "Wednesday":2, "Thursday":3, "Friday":4,"Saturday":5,"Sunday":6}
+
+        anchored_date = None
+
+        ordinal_dict = {"FIRST" : 0, "SECOND" : 1, "THIRD" : 2, "FOURTH" : 3, "FIFTH" : 4, "SIXTH" : 5}
+        if refine_by_weekday_dict["position"] in ordinal_dict:
+            desired_day = day_dict[refine_by_weekday_dict["weekday"]]
+            relative_anchor_date_DOW = anchor_date.weekday()
+            
+            days_to_add = None
+            if refine_by_weekday_dict["direction"] == "FOLLOWING": 
+                days_to_add = ((desired_day - relative_anchor_date_DOW) % 7) + 7 * ordinal_dict[refine_by_weekday_dict["position"]]
+            elif refine_by_weekday_dict["direction"] == "PRECEDING": 
+                days_to_add = -((relative_anchor_date_DOW - desired_day) % 7) - 7 * ordinal_dict[refine_by_weekday_dict["position"]]
+            anchored_date = anchor_date + timedelta(days=days_to_add)
+
+        return anchored_date
+    
+    @staticmethod
+    def _refine_by_days(refine_by_days_dict, anchor_date):
+        days_to_add = None
+        if refine_by_days_dict["direction"] == "PRECEDING":
+            days_to_add = -1 * refine_by_days_dict["value"]
+        elif refine_by_days_dict["direction"] == "FOLLOWING":
+            days_to_add = refine_by_days_dict["value"]
+        return anchor_date + timedelta(days=days_to_add)
+    
+    @staticmethod
+    def _relative_to_dateObject(relative_dict, anchor_date):
+        if anchor_date is None: 
+            raise ValueError("anchor_date must not be None in _relative_to_dateObject")
+        if relative_dict.get("relative-minor") is None:
+            raise ValueError("effective_end_date is missing relative-minor key when it should have one")
+        relative_offset_date = DateRuleParser._relativeMinor_to_dateObject(relative_dict=relative_dict["relative-minor"], anchor_date=anchor_date)
+        if(relative_offset_date is None):
+            raise ValueError("relative_offset_date must not be None in _relative_to_dateObject()")
+        
+        final_date = relative_offset_date
+        if relative_dict.get("refine-by-weekday") is not None:
+            final_date = DateRuleParser._refine_by_weekday(relative_dict["refine-by-weekday"], anchor_date=relative_offset_date)
+        if relative_dict.get("refine-by-days") is not None:
+            final_date = DateRuleParser._refine_by_days(relative_dict["refine-by-days"], anchor_date=relative_offset_date)
+        
+        return final_date 
+
+    
+    @staticmethod
+    def _relativeToStartDate_to_dateObject(relativeToStartDate_dict, start_date):
+        relativeToStartDate_dict["direction"] = "FROM NOW"
+        unrefined_date = DateRuleParser._relativeMinor_to_dateObject(relativeToStartDate_dict, anchor_date=start_date)
+        if relativeToStartDate_dict.get("refine-by-weekday") is not None:
+            refined_date = DateRuleParser._refine_by_weekday(relativeToStartDate_dict["refine-by-weekday"], anchor_date=unrefined_date)
+            return refined_date
+        if relativeToStartDate_dict.get("refine-by-days") is not None:
+            refined_date = DateRuleParser._refine_by_days(relativeToStartDate_dict["refine-by-days"], anchor_date=unrefined_date)
+            return refined_date
+        
+        return unrefined_date 
+
+
+
+
+    #any weekdays that are not in inclusive_dayname_list are removed from the set of all_days_list
+    @staticmethod
+    def _weekday_filtering(inclusive_dayname_list, all_days_list):
+        #faster if it's a set
+        inclusive_dayname_set = set(inclusive_dayname_list)
+        filtered_by_dayname = [d for d in all_days_list if d.strftime('%A') in inclusive_dayname_set]
+        return filtered_by_dayname
+    
+    @staticmethod
+    def _pattern_filtering(pattern_filter_dict, start_date, end_date):
+        freq_dict = {"DAY" : DAILY, "WEEK" : WEEKLY, "MONTH" : MONTHLY}
+        patternUnit_start_dates = list(rrule(
+            freq=freq_dict[pattern_filter_dict["unit"]],
+            interval=pattern_filter_dict["interval"],
+            dtstart=start_date,
+            until=end_date
+        ))
+
+        # patternUnit_start_dates contains the first day of each pattern unit (e.g., week, month)
+        # If you want all days in each pattern unit, expand each period into its days
+        all_dates = []
+        for period_start in patternUnit_start_dates:
+            if pattern_filter_dict["unit"] == "WEEK":
+                for i in range(7):
+                    day = period_start + timedelta(days=i)
+                    if day.date() <= end_date:
+                        all_dates.append(day)
+            elif pattern_filter_dict["unit"] == "MONTH":
+                # Get all days in the month
+                next_month = (period_start + relativedelta(months=1))
+                day = period_start
+                while day < next_month and day.date() <= end_date:
+                    all_dates.append(day)
+                    day += timedelta(days=1)
+            #this is overkill and doesn't actually accomplish anything. Good for safety I guess
+            elif pattern_filter_dict["unit"] == "DAY": 
+                if period_start.date() <= end_date:
+                    all_dates.append(period_start)
+
+        all_dates = [d.date() for d in all_dates] 
+        return all_dates
+    
+
+
+
+
+
+
+import ast 
+
+def on_json_update(event):
+    """
+    This function runs AFTER the JavaScript has finished rendering
+    and has updated the JSON output.
+    """
+    console.log("🐍 'jsonUpdated' event received. Running Python logic.")
+
+    # Get the newly generated JSON string
+    json_output_element = document.getElementById("json-output")
+    json_string = json_output_element.textContent
+    
+    if not json_string:
+        console.log("🐍 JSON is empty, skipping update.")
+        return
+
+    rule_dict = None
+    try:
+        rule_dict = ast.literal_eval(json_string)
+    except Exception as e:
+        console.error(f"🐍 Error parsing the rule string: {e}")
+        return
+
+    if rule_dict:
+        try:
+            #generates the dates
+            parser = DateRuleParser(rule_dict)
+            parsed_results = parser.get_results_dict()
+            start_date_str = str(parsed_results["start_date"])
+            end_date_str = str(parsed_results["end_date"])
+            effective_start_date_str = str(parsed_results["effective_start_date"])
+            effective_end_date_str = str(parsed_results["effective_end_date"])
+            
+            # Update the HTML element with the parsed date
+            start_date_header = document.getElementById('start-date-header')
+            end_date_header = document.getElementById('end-date-header')
+            effective_start_date_header = document.getElementById('effective-start-date-header')
+            effective_end_date_header = document.getElementById('effective-end-date-header')
+            
+            if start_date_header:
+                start_date_header.textContent = f"Start Date: {start_date_str}"
+            if end_date_header:
+                end_date_header.textContent = f"End Date: {end_date_str}"
+            if effective_start_date_header:
+                effective_start_date_header.textContent = f"Effective Start Date: {effective_start_date_str}"
+            if effective_end_date_header:
+                effective_end_date_header.textContent = f"Effective End Date: {effective_end_date_str}"
+
+        except Exception as e:
+            console.error(f"🐍 Error during date parsing or DOM update: {e}")
+
+
+# Create a proxy for our new handler
+on_json_update_proxy = create_proxy(on_json_update)
+
+# Now, listen for our specific, custom event instead of a generic 'click'
+document.addEventListener("jsonUpdated", on_json_update_proxy)
+
+
+
+
+
+</script>
+
+
+</body>
+</html>
