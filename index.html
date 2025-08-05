@@ -66,227 +66,310 @@
     </div>
 
 <script>
-        // --- INITIAL STATE & CONSTANTS ---
-        const initialRuleState_full = { alias: "CONTRACT_RULE_Q2_AVG", ignore_missing: false, "global-relative-from-today": "today", start_date: { type: "relative", "relative-minor": { "value": 3, "unit": "MONTHS", "direction": "AGO", "snap_to": null, "skip_weekends": false }, "refine-by-weekday": { enabled: false, position: "FIRST", direction: "PRECEDING", weekday: "Monday" }, "refine-by-days": { enabled: false, value: 0, direction: "FOLLOWING" } }, end_date: { type: "relative", "relative-minor": { "value": 1, "unit": "MONTHS", "direction": "AGO", "snap_to": null, "skip_weekends": false }, "refine-by-weekday": { enabled: false, position: "FIRST", direction: "PRECEDING", weekday: "Monday" }, "refine-by-days": { enabled: false, value: 0, direction: "FOLLOWING" } }, day_filter: [ { type: "inclusive_days_of_week", days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] } ], pattern_filter: { enabled: false, interval: 1, unit: "DAY" }, aggregate: { type: "MEAN", by: "Volume", first_day_only: true }, effective: { start_date: { type: "relative",  "relative-minor": { value: 1, unit: "DAYS", direction: "after-end-date", "snap_to": null, "skip_weekends": false }, "refine-by-weekday": { enabled: false, position: "FIRST", direction: "PRECEDING", weekday: "Monday" }, "refine-by-days": { enabled: false, value: 0, direction: "FOLLOWING" } }, end_date: { type: "relative",  "relative-minor": { value: 1, unit: "MONTHS", direction: "after-end-date", "snap_to": null, "skip_weekends": false }, "refine-by-weekday": { enabled: false, position: "FIRST", direction: "PRECEDING", weekday: "Monday" }, "refine-by-days": { enabled: false, value: 0, direction: "FOLLOWING" } } }, repeat: { interval: 2, unit: "WEEK", anchor_day: "Monday", start: { type: "absolute", value: "2023-06-25" } } };
+    // --- INITIAL STATE & CONSTANTS ---
+    const initialRuleState_full = {
+  "alias": "Look at dates starting from the first Monday preceding 3 months ago, up until the end of this month. Look at every other day in between excluding weekend days.\nEffective from today for the next 10 days. ",
+  "ignore_missing": true,
+  "global-relative-from-today": "today",
+  "start_date": {
+    "type": "relative",
+    "relative-minor": {
+      "value": 3,
+      "unit": "MONTHS",
+      "direction": "AGO",
+      "snap_to": null,
+      "skip_weekends": false
+    },
+    "refine-by-weekday": {
+      "enabled": true,
+      "position": "FIRST",
+      "direction": "PRECEDING",
+      "weekday": "Monday"
+    },
+    "refine-by-days": {
+      "enabled": false,
+      "value": 0,
+      "direction": "FOLLOWING"
+    }
+  },
+  "end_date": {
+    "type": "relative",
+    "relative-minor": {
+      "value": 0,
+      "unit": "MONTHS",
+      "direction": "FROM NOW",
+      "snap_to": "end",
+      "skip_weekends": false
+    },
+    "refine-by-weekday": {
+      "enabled": false,
+      "position": "FIRST",
+      "direction": "PRECEDING",
+      "weekday": "Monday"
+    },
+    "refine-by-days": {
+      "enabled": false,
+      "value": 0,
+      "direction": "FOLLOWING"
+    }
+  },
+  "day_filter": [{
+    "type": "inclusive_days_of_week",
+    "days": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday"
+    ]
+  }],
+  "pattern_filter": {
+    "enabled": true,
+    "interval": 2,
+    "unit": "DAY"
+  },
+  "aggregate": {
+    "type": "MEAN",
+    "by": "Volume",
+    "first_day_only": true
+  },
+  "effective": {
+    "start_date": {
+      "type": "relative",
+      "relative-minor": {
+        "value": 0,
+        "unit": "DAYS",
+        "direction": "after-global-relative-date",
+        "snap_to": null,
+        "skip_weekends": false
+      },
+      "refine-by-weekday": {
+        "enabled": false,
+        "position": "FIRST",
+        "direction": "PRECEDING",
+        "weekday": "Monday"
+      },
+      "refine-by-days": {
+        "enabled": false,
+        "value": 0,
+        "direction": "FOLLOWING"
+      }
+    },
+    "end_date": {
+      "type": "relative",
+      "relative-minor": {
+        "value": 10,
+        "unit": "DAYS",
+        "direction": "after-end-date",
+        "snap_to": null,
+        "skip_weekends": false
+      },
+      "refine-by-weekday": {
+        "enabled": false,
+        "position": "FIRST",
+        "direction": "PRECEDING",
+        "weekday": "Monday"
+      },
+      "refine-by-days": {
+        "enabled": false,
+        "value": 0,
+        "direction": "FOLLOWING"
+      }
+    }
+  },
+  "repeat": {
+    "interval": 2,
+    "unit": "WEEK",
+    "anchor_day": "Monday",
+    "start": {
+      "type": "absolute",
+      "value": "2023-06-25"
+    }
+  }
+};
 
-        let appState = {
-            advancedModeEnabled: false,
-            singleRule: JSON.parse(JSON.stringify(initialRuleState_full)),
-            ruleGroups: []
-        };
-        const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-        const UNITS = ["DAYS", "WEEKS", "MONTHS", "QUARTERS"];
-        const REFINE_POSITIONS = ["FIRST", "SECOND", "THIRD", "FOURTH", "FIFTH", "SIXTH"];
-        const REFINE_DIRECTIONS = ["PRECEDING", "FOLLOWING"];
-        const DIRECTION_OPTIONS = { standard: [{ value: "AGO", text: "AGO" }, { value: "FROM NOW", text: "FROM NOW" }], effectiveStart: [{ value: "after-end-date", text: "After End Date" }, { value: "before-end-date", text: "Before End Date" }], effectiveEnd: [ { value: "after-end-date", text: "After End Date" }, { value: "before-end-date", text: "Before End Date" }, { value: "after-effective-start-date", text: "After Effective Start Date" } ] };
+    let appState = {
+        advancedModeEnabled: false,
+        singleRule: JSON.parse(JSON.stringify(initialRuleState_full)),
+        ruleGroups: []
+    };
+    const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const UNITS = ["DAYS", "WEEKS", "MONTHS", "QUARTERS"];
+    const REFINE_POSITIONS = ["FIRST", "SECOND", "THIRD", "FOURTH", "FIFTH", "SIXTH"];
+    const REFINE_DIRECTIONS = ["PRECEDING", "FOLLOWING"];
+    const DIRECTION_OPTIONS = { standard: [{ value: "AGO", text: "AGO" }, { value: "FROM NOW", text: "FROM NOW" }], effectiveStart: [{ value: "after-end-date", text: "After End Date" }, { value: "before-end-date", text: "Before End Date" }], effectiveEnd: [ { value: "after-end-date", text: "After End Date" }, { value: "before-end-date", text: "Before End Date" }, { value: "after-effective-start-date", text: "After Effective Start Date" } ] };
 
-        const jsonOutputEl = document.getElementById('json-output');
-        const mainRuleContainerEl = document.getElementById('main-rule-container');
-        const advancedModeToggleEl = document.getElementById('advanced-mode-toggle');
-        const copyJsonBtn = document.getElementById('copy-json-btn');
+    const jsonOutputEl = document.getElementById('json-output');
+    const mainRuleContainerEl = document.getElementById('main-rule-container');
+    const advancedModeToggleEl = document.getElementById('advanced-mode-toggle');
+    const copyJsonBtn = document.getElementById('copy-json-btn');
 
-        // --- CORE HELPER FUNCTIONS ---
-        function getOrdinal(n) { if (n == null || isNaN(n)) return ''; const s = ["th", "st", "nd", "rd"]; const v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
-        function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+    // Helper Functions (Unchanged)
+    function getOrdinal(n) { if (n == null || isNaN(n)) return ''; const s = ["th", "st", "nd", "rd"]; const v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+    function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+    function setValueByPath(obj, path, value) {
+        const pathArray = path.match(/([^[.\]])+/g);
+        pathArray.reduce((acc, key, i) => {
+            if (acc[key] === undefined) { acc[key] = /^\d+$/.test(pathArray[i + 1]) ? [] : {}; }
+            if (i === pathArray.length - 1) { acc[key] = value; }
+            return acc[key];
+        }, obj);
+    }
+    function getValueByPath(obj, path) { return path.split('.').reduce((o, k) => (o || {})[k], obj); }
+    function getRuleFromTarget(target) { const formContainer = target.closest('[data-form-container]'); if (!formContainer) return null; const groupIndex = formContainer.dataset.groupIndex; return groupIndex !== undefined ? appState.ruleGroups[parseInt(groupIndex)].rule : appState.singleRule; }
+    
+    // --- JSON Generation and Publishing ---
+    function publishJsonUpdate() {
+        generateJson();
+        document.dispatchEvent(new CustomEvent('jsonUpdated'));
+    }
 
-        function setValueByPath(obj, path, value) {
-            const pathArray = path.match(/([^[.\]])+/g);
-            pathArray.reduce((acc, key, i) => {
-                if (acc[key] === undefined) {
-                    acc[key] = /^\d+$/.test(pathArray[i + 1]) ? [] : {};
-                }
-                if (i === pathArray.length - 1) {
-                    acc[key] = value;
-                }
-                return acc[key];
-            }, obj);
+    function generateJson() { let finalJson; if (!appState.advancedModeEnabled) { finalJson = getCleanRuleObject(appState.singleRule); } else { finalJson = {}; appState.ruleGroups.forEach((group, index) => { const groupKey = `group-${index + 1}`; const ruleForJson = getCleanRuleObject(group.rule); ruleForJson.rule_specific_days = group.days; finalJson[groupKey] = ruleForJson; }); } const jsonString = JSON.stringify(finalJson, null, 2).replace(/: true/g, ': True').replace(/: false/g, ': False'); jsonOutputEl.textContent = jsonString; }
+    
+    function getCleanRuleObject(ruleObj) {
+        const stateToSerialize = deepClone(ruleObj);
+        const cleanDateObject = (dateObj) => { if (!dateObj) return; if (dateObj.type === 'relative' && dateObj['relative-minor']) { if (dateObj['relative-minor'].snap_to === null) delete dateObj['relative-minor'].snap_to; if (!dateObj['relative-minor'].skip_weekends) delete dateObj['relative-minor'].skip_weekends; } if (dateObj["refine-by-weekday"]) { if (!dateObj["refine-by-weekday"].enabled) delete dateObj["refine-by-weekday"]; else delete dateObj["refine-by-weekday"].enabled; } if (dateObj["refine-by-days"]) { if (!dateObj["refine-by-days"].enabled) delete dateObj["refine-by-days"]; else delete dateObj["refine-by-days"].enabled; } };
+        cleanDateObject(stateToSerialize.start_date); cleanDateObject(stateToSerialize.end_date);
+        if (stateToSerialize.effective) { cleanDateObject(stateToSerialize.effective.start_date); cleanDateObject(stateToSerialize.effective.end_date); }
+        if (!stateToSerialize.pattern_filter || !stateToSerialize.pattern_filter.enabled) { delete stateToSerialize.pattern_filter; } else { delete stateToSerialize.pattern_filter.enabled; }
+        return stateToSerialize;
+    }
+    
+    // --- DYNAMIC UI BUILDER FUNCTIONS ---
+    function createCompleteRuleForm(rule, groupIndex = null) {
+        const formContainer = document.createElement('div'); formContainer.dataset.formContainer = 'true';
+        if (groupIndex !== null) formContainer.dataset.groupIndex = groupIndex;
+        const isToday = rule['global-relative-from-today'] === 'today'; const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const dayFilterHtml = `<div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Day Filter</h2><div data-container="day-filter-list" class="space-y-4 mb-4"></div><div class="flex items-center gap-4"><select data-control="add-filter-type" class="flex-grow p-2 bg-gray-700 rounded-md"><option value="inclusive_days_of_week">Inclusive Days of Week</option><option value="exclude_holidays">Exclude Holidays</option><option value="days_between">Days Between</option></select><button data-action="add-day-filter" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md">Add Filter</button></div></div>`;
+        
+        // --- START CHANGE 1: Swapped <input> for <textarea> ---
+        const mainInfoHtml = `
+            <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                <h2 class="text-xl font-semibold mb-4">Main Information</h2>
+                <textarea data-path="alias" rows="1" class="w-full p-2 bg-gray-700 rounded-md resize-none overflow-hidden">${rule.alias}</textarea>
+                <div class="pt-2 mt-4 border-t border-gray-700">
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-sm">Ignore Missing Data</span>
+                        <input type="checkbox" data-path="ignore_missing" ${rule.ignore_missing?'checked':''} class="h-4 w-4 rounded">
+                    </label>
+                    <p data-container="ignore-missing-desc" class="text-xs text-gray-400 mt-2">${rule.ignore_missing ? "No error on missing data." : "Error on missing data."}</p>
+                </div>
+            </div>`;
+        // --- END CHANGE 1 ---
+
+        formContainer.innerHTML = mainInfoHtml + `<div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Global Relative Date</h2><label class="flex items-center justify-between cursor-pointer"><span class="text-sm">Relative from today [${todayStr}]</span><input type="checkbox" data-path="global-relative-from-today" data-rerender="true" ${isToday?'checked':''} class="h-4 w-4 rounded"></label><div data-container="global-relative-date-picker" class="mt-4 ${isToday ? 'hidden' : ''}"><input type="date" data-path="global-relative-from-today" value="${isToday ? new Date().toISOString().split('T')[0] : rule['global-relative-from-today']}" class="w-full p-2 bg-gray-700 rounded-md"></div></div><div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Window Definition</h2><div class="space-y-6"><div data-container="start_date"></div><div data-container="end_date"></div></div></div>${dayFilterHtml}<div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Pattern Filtering</h2><label class="flex items-center"><input type="checkbox" data-path="pattern_filter.enabled" data-rerender="true" ${rule.pattern_filter.enabled?'checked':''} class="h-4 w-4 rounded"><span class="ml-2">Enable Pattern Filtering</span></label><div data-container="pattern-filter-options" class="${rule.pattern_filter.enabled?'':'hidden'} space-y-4 pt-4 border-t border-gray-700"><div class="grid grid-cols-2 gap-4"><input type="number" data-path="pattern_filter.interval" data-rerender="true" value="${rule.pattern_filter.interval}" class="w-full p-2 bg-gray-700 rounded-md"><select data-path="pattern_filter.unit" data-rerender="true" class="w-full p-2 bg-gray-700 rounded-md">${['DAY','WEEK','MONTH'].map(u=>`<option ${rule.pattern_filter.unit===u?'selected':''}>${u}</option>`).join('')}</select></div><p data-container="pattern-description" class="text-sm text-gray-400">${rule.pattern_filter.enabled?`Consider every ${getOrdinal(rule.pattern_filter.interval || 1)} ${rule.pattern_filter.unit.toLowerCase()}.`:''}</p></div></div><div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Aggregate</h2><div class="grid grid-cols-2 gap-4"><select data-path="aggregate.type" data-rerender="true" class="w-full p-2 bg-gray-700 rounded-md">${['MEAN','SUM','MODE','MEDIAN'].map(t=>`<option ${rule.aggregate.type===t?'selected':''}>${t}</option>`).join('')}</select><input type="text" data-path="aggregate.by" value="${rule.aggregate.by}" class="w-full p-2 bg-gray-700 rounded-md"></div></div><div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Effective Dates</h2><div class="space-y-6"><div data-container="effective.start_date"></div><div data-container="effective.end_date"></div></div></div>`;
+        formContainer.querySelector('[data-container="start_date"]').appendChild(createDateBuilder('Start Date', 'start_date', rule.start_date, groupIndex)); formContainer.querySelector('[data-container="end_date"]').appendChild(createDateBuilder('End Date', 'end_date', rule.end_date, groupIndex)); formContainer.querySelector('[data-container="effective.start_date"]').appendChild(createDateBuilder('Effective Start Date', 'effective.start_date', rule.effective.start_date, groupIndex)); formContainer.querySelector('[data-container="effective.end_date"]').appendChild(createDateBuilder('Effective End Date', 'effective.end_date', rule.effective.end_date, groupIndex));
+        renderDayFilters(formContainer, rule.day_filter); 
+        return formContainer;
+    }
+
+    function createDateBuilder(label, dateKey, stateObject, groupIndex) { const gIndexAttr = groupIndex !== null ? `data-group-index="${groupIndex}"` : ''; const container = document.createElement('div'); container.className = 'border border-gray-700 p-4 rounded-md'; const headerId = `${label.toLowerCase().replace(/\s+/g, '-')}-header${groupIndex !== null ? `-${groupIndex}` : ''}`; container.innerHTML = `<label id="${headerId}" class="block text-lg font-medium mb-2">${label}</label><select data-action="change-date-type" data-date-key="${dateKey}" ${gIndexAttr} class="w-full p-2 bg-gray-700 rounded-md mb-4"><option value="relative" ${stateObject.type==='relative'?'selected':''}>Relative</option><option value="absolute" ${stateObject.type==='absolute'?'selected':''}>Absolute</option>${dateKey === 'end_date' ? `<option value="relative_to_start" ${stateObject.type==='relative_to_start'?'selected':''}>Relative to Start</option>` : ''}</select><div data-container="date-options"></div>`; const optionsContainer = container.querySelector('[data-container="date-options"]'); if (stateObject.type === 'relative') { optionsContainer.innerHTML = createRelativeOptions(dateKey, stateObject, groupIndex); } else if (stateObject.type === 'absolute') { optionsContainer.innerHTML = createAbsoluteOptions(dateKey, stateObject); } else if (stateObject.type === 'relative_to_start') { optionsContainer.innerHTML = createRelativeToStartOptions(dateKey, stateObject); } container.insertAdjacentHTML('beforeend', createRefinementOptions(dateKey, stateObject, groupIndex)); return container; }
+    
+    function createRelativeOptions(dateKey, state, groupIndex) { const safeState = state['relative-minor']; let dirOpts; if (dateKey.includes('effective.end')) { dirOpts = [...DIRECTION_OPTIONS.effectiveEnd]; } else if (dateKey.includes('effective')) { dirOpts = [...DIRECTION_OPTIONS.effectiveStart]; } else { dirOpts = DIRECTION_OPTIONS.standard; } if (dateKey.includes('effective')) { const rule = groupIndex !== null ? appState.ruleGroups[groupIndex].rule : appState.singleRule; const globalDateValue = rule['global-relative-from-today']; const globalDateText = globalDateValue === 'today' ? 'Today' : new Date(globalDateValue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); dirOpts.push({ value: 'before-global-relative-date', text: `Before ${globalDateText}` }); dirOpts.push({ value: 'after-global-relative-date', text: `After ${globalDateText}` }); } const snapToValue = safeState.snap_to; const showSnap = ['WEEKS','MONTHS','QUARTERS'].includes(safeState.unit); const gIndexAttr = groupIndex !== null ? `data-group-index="${groupIndex}"` : ''; let skipWeekendsHtml = ''; if (safeState.unit === 'DAYS') { skipWeekendsHtml = `<div class="mt-4 pt-4 border-t border-gray-600/50"><label class="flex items-center justify-between cursor-pointer"><span class="text-sm font-medium text-gray-300">Skip over weekends</span><input type="checkbox" data-path="${dateKey}.relative-minor.skip_weekends" ${safeState.skip_weekends ? 'checked' : ''} class="h-4 w-4 rounded bg-gray-700"></label><p class="text-xs text-gray-400 mt-2 font-light">Day counting will jump over Saturday and Sunday. Ex: 1 day before Monday becomes the preceding Friday.</p></div>`; } const snapButtonsHtml = showSnap ? `<div class="mt-4 pt-4 border-t border-gray-600/50 grid grid-cols-2 gap-3"><button data-action="snap-toggle" data-snap="beginning" data-date-key="${dateKey}" ${gIndexAttr} class="text-sm py-2 rounded-md ${snapToValue==='beginning'?'bg-blue-600 text-white':'bg-gray-500'}">Snap to Beginning</button><button data-action="snap-toggle" data-snap="end" data-date-key="${dateKey}" ${gIndexAttr} class="text-sm py-2 rounded-md ${snapToValue==='end'?'bg-blue-600 text-white':'bg-gray-500'}">Snap to End</button></div>` : ''; return `<div class="grid grid-cols-3 gap-3"><input type="number" data-path="${dateKey}.relative-minor.value" value="${safeState.value}" class="w-full p-2 bg-gray-600 rounded-md"><select data-path="${dateKey}.relative-minor.unit" data-rerender="true" class="w-full p-2 bg-gray-600 rounded-md">${UNITS.map(u=>`<option ${safeState.unit===u?'selected':''}>${u}</option>`).join('')}</select><select data-path="${dateKey}.relative-minor.direction" class="w-full p-2 bg-gray-600 rounded-md">${dirOpts.map(o=>`<option value="${o.value}" ${safeState.direction===o.value?'selected':''}>${o.text}</option>`).join('')}</select></div>${skipWeekendsHtml}${snapButtonsHtml}`; }
+    function createRefinementOptions(dateKey, state, groupIndex) { const gIndexAttr = groupIndex !== null ? `data-group-index="${groupIndex}"` : ''; const rWeekday = state['refine-by-weekday']; const rDays = state['refine-by-days']; const weekdayOptionsHTML = rWeekday.enabled ? `<div class="grid grid-cols-3 gap-3 p-3 bg-gray-900/50 rounded-md"><select data-path="${dateKey}.refine-by-weekday.position" class="w-full p-2 bg-gray-600 rounded-md">${REFINE_POSITIONS.map(p=>`<option ${rWeekday.position===p?'selected':''}>${p}</option>`).join('')}</select><select data-path="${dateKey}.refine-by-weekday.direction" class="w-full p-2 bg-gray-600 rounded-md">${REFINE_DIRECTIONS.map(d=>`<option ${rWeekday.direction===d?'selected':''}>${d}</option>`).join('')}</select><select data-path="${dateKey}.refine-by-weekday.weekday" class="w-full p-2 bg-gray-600 rounded-md">${DAYS.map(d=>`<option ${rWeekday.weekday===d?'selected':''}>${d}</option>`).join('')}</select></div>` : ''; const daysOptionsHTML = rDays.enabled ? `<div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 p-3 bg-gray-900/50 rounded-md"><input type="number" data-path="${dateKey}.refine-by-days.value" value="${rDays.value||0}" class="w-full p-2 bg-gray-600 rounded-md"><span class="text-sm">days</span><select data-path="${dateKey}.refine-by-days.direction" class="w-full p-2 bg-gray-600 rounded-md">${REFINE_DIRECTIONS.map(d=>`<option ${rDays.direction===d?'selected':''}>${d}</option>`).join('')}</select></div>` : ''; return `<div class="mt-4 pt-4 border-t border-gray-600/50 space-y-2"><div class="flex gap-4"><button data-action="refine-toggle" data-refine-type="weekday" data-date-key="${dateKey}" ${gIndexAttr} class="flex-1 text-sm py-2 rounded-md ${rWeekday.enabled?'bg-blue-600 text-white font-semibold':'bg-gray-600 hover:bg-gray-500'}">Refine by Weekday</button><button data-action="refine-toggle" data-refine-type="days" data-date-key="${dateKey}" ${gIndexAttr} class="flex-1 text-sm py-2 rounded-md ${rDays.enabled?'bg-blue-600 text-white font-semibold':'bg-gray-600 hover:bg-gray-500'}">Refine by Days</button></div><div class="mt-2 space-y-2">${weekdayOptionsHTML}${daysOptionsHTML}</div></div>`; }
+    function createAbsoluteOptions(dateKey, state) { return `<input type="date" data-path="${dateKey}.value" value="${state.value}" class="w-full p-2 bg-gray-600 rounded-md">`; }
+    function createRelativeToStartOptions(dateKey, state) { const isZero=state.value===0; return `<div class="grid grid-cols-2 gap-3"><input type="number" data-path="${dateKey}.value" data-rerender="true" value="${state.value}" class="w-full p-2 bg-gray-600 rounded-md"><select data-path="${dateKey}.unit" ${isZero?'disabled':''} class="w-full p-2 bg-gray-600 rounded-md ${isZero?'opacity-50':''}">${UNITS.map(u=>`<option ${state.unit===u?'selected':''}>${u}</option>`).join('')}</select></div>`; }
+    function renderDayFilters(formContainer, dayFilterState) { const el = formContainer.querySelector('[data-container="day-filter-list"]'); el.innerHTML = ''; dayFilterState.forEach((filter, index) => { const fEl = document.createElement('div'); fEl.className='bg-gray-700 p-3 rounded-md flex items-center justify-between'; let content=''; if(filter.type==='inclusive_days_of_week') { content=`<div class="flex-grow"><p class="font-medium">Inclusive Days of Week</p><div class="flex flex-wrap gap-x-4 gap-y-1 mt-2">${DAYS.map(d=>`<label class="flex items-center text-sm"><input type="checkbox" data-path="day_filter.${index}.days" data-day="${d}" ${filter.days.includes(d)?'checked':''} class="h-4 w-4 rounded"><span class="ml-1.5">${d}</span></label>`).join('')}</div></div>`; } else if (filter.type === 'exclude_holidays') { content=`<p class="flex-grow font-medium">Exclude Holidays</p>`; } else { content=`<div class="flex-grow flex items-center gap-2"><span class="text-sm">Days between</span><select data-path="day_filter.${index}.lower_bound" class="p-1 bg-gray-600 rounded">${Array.from({length:31},(_,i)=>`<option value="${i+1}" ${filter.lower_bound===i+1?'selected':''}>${getOrdinal(i+1)}</option>`).join('')}</select> and <select data-path="day_filter.${index}.upper_bound" class="p-1 bg-gray-600 rounded">${Array.from({length:31},(_,i)=>`<option value="${i+1}" ${filter.upper_bound===i+1?'selected':''}>${getOrdinal(i+1)}</option>`).join('')}</select></div>`; } fEl.innerHTML = content + `<button data-action="remove-day-filter" data-day-filter-index="${index}" class="ml-4 bg-red-600 text-white py-1 px-2 rounded text-xs">Remove</button>`; el.appendChild(fEl); }); }
+
+    // --- UI Rendering ---
+    function rerender() {
+        mainRuleContainerEl.innerHTML = '';
+        if (appState.advancedModeEnabled) {
+            const assignedDays = new Set(appState.ruleGroups.flatMap(g => g.days));
+            appState.ruleGroups.forEach((group, index) => {
+                const groupWrapper = document.createElement('div'); groupWrapper.className = 'group-container'; groupWrapper.innerHTML = `<div class="group-header"><h2 class="text-2xl font-bold text-teal-300">Group ${index + 1}</h2>${index > 0 ? `<button data-action="remove-group" data-group-index="${index}" class="bg-red-600 text-white py-1 px-3 rounded text-sm">Remove</button>` : '<div></div>'}</div>`;
+                const daySelector = document.createElement('div'); daySelector.innerHTML = '<p class="font-medium mb-2">Rule applies to these days:</p>';
+                const dayGrid = document.createElement('div'); dayGrid.className = 'flex flex-wrap gap-x-4 gap-y-2';
+                DAYS.forEach(day => { const isChecked=group.days.includes(day); const isDisabled=!isChecked&&assignedDays.has(day); dayGrid.innerHTML += `<label class="flex items-center text-sm ${isDisabled ? 'day-selector-disabled' : 'cursor-pointer'}"><input type="checkbox" data-action="toggle-day" data-group-index="${index}" data-day="${day}" ${isChecked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''} class="h-4 w-4 rounded bg-gray-600 text-teal-500"><span class="ml-1.5">${day}</span></label>`; });
+                daySelector.appendChild(dayGrid); groupWrapper.appendChild(daySelector); groupWrapper.appendChild(document.createElement('hr')).className = 'my-6 border-gray-700'; groupWrapper.appendChild(createCompleteRuleForm(group.rule, index)); mainRuleContainerEl.appendChild(groupWrapper);
+            });
+            if (assignedDays.size < DAYS.length) { mainRuleContainerEl.innerHTML += `<button data-action="add-group" class="w-full bg-teal-600 hover:bg-teal-700 font-semibold py-3 px-4 rounded-md mt-4">Add Rule Group</button>`; }
+        } else {
+            mainRuleContainerEl.appendChild(createCompleteRuleForm(appState.singleRule, null));
+        }
+        
+        // This makes sure the textarea has the correct initial height on every render
+        document.querySelectorAll('textarea[data-path="alias"]').forEach(el => {
+            el.style.height = 'auto';
+            el.style.height = `${el.scrollHeight}px`;
+        });
+        
+
+            // Defer the initial resize to allow the browser to paint first
+        setTimeout(() => {
+            document.querySelectorAll('textarea[data-path="alias"]').forEach(el => {
+                el.style.height = 'auto';
+                el.style.height = `${el.scrollHeight}px`;
+            });
+        }, 0); // A 0ms timeout is all that's needed
+
+        publishJsonUpdate();
+    }
+    
+    // --- Event Handlers ---
+    mainRuleContainerEl.addEventListener('input', e => {
+        const target = e.target;
+        
+        // --- START CHANGE 2: Add auto-resize logic ---
+        if (target.tagName === 'TEXTAREA' && target.dataset.path === 'alias') {
+            target.style.height = 'auto'; // Reset height to recalculate
+            target.style.height = `${target.scrollHeight}px`; // Set height to content height
+        }
+        // --- END CHANGE 2 ---
+
+        const path = target.dataset.path;
+        if (!path) return;
+        
+        const rule = getRuleFromTarget(target);
+        if (!rule) return;
+        
+        let value;
+
+        if (path.includes('day_filter') && path.endsWith('.days') && target.dataset.day) {
+            const day = target.dataset.day; const currentDaysPath = path; const parentPath = currentDaysPath.substring(0, currentDaysPath.lastIndexOf('.')); const filterObject = getValueByPath(rule, parentPath); const currentDays = filterObject.days || []; const daySet = new Set(currentDays);
+            if (target.checked) daySet.add(day); else daySet.delete(day);
+            value = Array.from(daySet).sort((a,b) => DAYS.indexOf(a) - DAYS.indexOf(b));
+            setValueByPath(rule, currentDaysPath, value); publishJsonUpdate(); return;
         }
 
-        function getValueByPath(obj, path) { return path.split('.').reduce((o, k) => (o || {})[k], obj); }
-        function getRuleFromTarget(target) { const formContainer = target.closest('[data-form-container]'); if (!formContainer) return null; const groupIndex = formContainer.dataset.groupIndex; return groupIndex !== undefined ? appState.ruleGroups[parseInt(groupIndex)].rule : appState.singleRule; }
-        
-        // --- JSON GENERATION ---
-        function generateJson() { let finalJson; if (!appState.advancedModeEnabled) { finalJson = getCleanRuleObject(appState.singleRule); } else { finalJson = {}; appState.ruleGroups.forEach((group, index) => { const groupKey = `group-${index + 1}`; const ruleForJson = getCleanRuleObject(group.rule); ruleForJson.rule_specific_days = group.days; finalJson[groupKey] = ruleForJson; }); } const jsonString = JSON.stringify(finalJson, null, 2).replace(/: true/g, ': True').replace(/: false/g, ': False'); jsonOutputEl.textContent = jsonString; }
-        
-        //triggers JSONgeneration and then updates the 4 date headeers with the parsed dates
-        function publishJsonUpdate() {
-            // First, generate the JSON as before
-            generateJson();
-            // Then, announce that the JSON is ready by dispatching a custom event
-            document.dispatchEvent(new CustomEvent('jsonUpdated'));
-        }
+        value = target.type === 'checkbox' ? target.checked : (target.type === 'number' ? parseInt(target.value) || 0 : target.value);
 
-
-        function getCleanRuleObject(ruleObj) {
-            const stateToSerialize = deepClone(ruleObj);
-            const cleanDateObject = (dateObj) => { if (!dateObj) return; if (dateObj.type === 'relative' && dateObj['relative-minor']) { if (dateObj['relative-minor'].snap_to === null) delete dateObj['relative-minor'].snap_to; if (!dateObj['relative-minor'].skip_weekends) delete dateObj['relative-minor'].skip_weekends; } if (dateObj["refine-by-weekday"]) { if (!dateObj["refine-by-weekday"].enabled) delete dateObj["refine-by-weekday"]; else delete dateObj["refine-by-weekday"].enabled; } if (dateObj["refine-by-days"]) { if (!dateObj["refine-by-days"].enabled) delete dateObj["refine-by-days"]; else delete dateObj["refine-by-days"].enabled; } };
-            cleanDateObject(stateToSerialize.start_date); cleanDateObject(stateToSerialize.end_date);
-            if (stateToSerialize.effective) { cleanDateObject(stateToSerialize.effective.start_date); cleanDateObject(stateToSerialize.effective.end_date); }
-            if (!stateToSerialize.pattern_filter || !stateToSerialize.pattern_filter.enabled) { delete stateToSerialize.pattern_filter; } else { delete stateToSerialize.pattern_filter.enabled; }
-            return stateToSerialize;
+        if (path === 'global-relative-from-today' && target.type === 'checkbox') {
+            value = value ? 'today' : new Date().toISOString().split('T')[0];
         }
         
-        // --- DYNAMIC UI BUILDER FUNCTIONS ---
-        function createCompleteRuleForm(rule, groupIndex = null) {
-            const formContainer = document.createElement('div'); formContainer.dataset.formContainer = 'true';
-            if (groupIndex !== null) formContainer.dataset.groupIndex = groupIndex;
-            const isToday = rule['global-relative-from-today'] === 'today'; const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            const dayFilterHtml = `<div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Day Filter</h2><div data-container="day-filter-list" class="space-y-4 mb-4"></div><div class="flex items-center gap-4"><select data-control="add-filter-type" class="flex-grow p-2 bg-gray-700 rounded-md"><option value="inclusive_days_of_week">Inclusive Days of Week</option><option value="exclude_holidays">Exclude Holidays</option><option value="days_between">Days Between</option></select><button data-action="add-day-filter" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md">Add Filter</button></div></div>`;
-            formContainer.innerHTML = `<div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Main Information</h2><input type="text" data-path="alias" value="${rule.alias}" class="w-full p-2 bg-gray-700 rounded-md"><div class="pt-2 mt-4 border-t border-gray-700"><label class="flex items-center justify-between cursor-pointer"><span class="text-sm">Ignore Missing Data</span><input type="checkbox" data-path="ignore_missing" ${rule.ignore_missing?'checked':''} class="h-4 w-4 rounded"></label><p data-container="ignore-missing-desc" class="text-xs text-gray-400 mt-2">${rule.ignore_missing ? "No error on missing data." : "Error on missing data."}</p></div></div><div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Global Relative Date</h2><label class="flex items-center justify-between cursor-pointer"><span class="text-sm">Relative from today [${todayStr}]</span><input type="checkbox" data-path="global-relative-from-today" data-rerender="true" ${isToday?'checked':''} class="h-4 w-4 rounded"></label><div data-container="global-relative-date-picker" class="mt-4 ${isToday ? 'hidden' : ''}"><input type="date" data-path="global-relative-from-today" value="${isToday ? new Date().toISOString().split('T')[0] : rule['global-relative-from-today']}" class="w-full p-2 bg-gray-700 rounded-md"></div></div><div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Window Definition</h2><div class="space-y-6"><div data-container="start_date"></div><div data-container="end_date"></div></div></div>${dayFilterHtml}<div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Pattern Filtering</h2><label class="flex items-center"><input type="checkbox" data-path="pattern_filter.enabled" data-rerender="true" ${rule.pattern_filter.enabled?'checked':''} class="h-4 w-4 rounded"><span class="ml-2">Enable Pattern Filtering</span></label><div data-container="pattern-filter-options" class="${rule.pattern_filter.enabled?'':'hidden'} space-y-4 pt-4 border-t border-gray-700"><div class="grid grid-cols-2 gap-4"><input type="number" data-path="pattern_filter.interval" data-rerender="true" value="${rule.pattern_filter.interval}" class="w-full p-2 bg-gray-700 rounded-md"><select data-path="pattern_filter.unit" data-rerender="true" class="w-full p-2 bg-gray-700 rounded-md">${['DAY','WEEK','MONTH'].map(u=>`<option ${rule.pattern_filter.unit===u?'selected':''}>${u}</option>`).join('')}</select></div><p data-container="pattern-description" class="text-sm text-gray-400">${rule.pattern_filter.enabled?`Consider every ${getOrdinal(rule.pattern_filter.interval || 1)} ${rule.pattern_filter.unit.toLowerCase()}.`:''}</p></div></div><div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Aggregate</h2><div class="grid grid-cols-2 gap-4"><select data-path="aggregate.type" data-rerender="true" class="w-full p-2 bg-gray-700 rounded-md">${['MEAN','SUM','MODE','MEDIAN'].map(t=>`<option ${rule.aggregate.type===t?'selected':''}>${t}</option>`).join('')}</select><input type="text" data-path="aggregate.by" value="${rule.aggregate.by}" class="w-full p-2 bg-gray-700 rounded-md"></div></div><div class="bg-gray-800 p-6 rounded-lg border border-gray-700"><h2 class="text-xl font-semibold mb-4">Effective Dates</h2><div class="space-y-6"><div data-container="effective.start_date"></div><div data-container="effective.end_date"></div></div></div>`;
-            formContainer.querySelector('[data-container="start_date"]').appendChild(createDateBuilder('Start Date', 'start_date', rule.start_date, groupIndex)); formContainer.querySelector('[data-container="end_date"]').appendChild(createDateBuilder('End Date', 'end_date', rule.end_date, groupIndex)); formContainer.querySelector('[data-container="effective.start_date"]').appendChild(createDateBuilder('Effective Start Date', 'effective.start_date', rule.effective.start_date, groupIndex)); formContainer.querySelector('[data-container="effective.end_date"]').appendChild(createDateBuilder('Effective End Date', 'effective.end_date', rule.effective.end_date, groupIndex));
-            renderDayFilters(formContainer, rule.day_filter); 
-            return formContainer;
-        }
-
-        function createDateBuilder(label, dateKey, stateObject, groupIndex) { const gIndexAttr = groupIndex !== null ? `data-group-index="${groupIndex}"` : ''; const container = document.createElement('div'); container.className = 'border border-gray-700 p-4 rounded-md'; const headerId = `${label.toLowerCase().replace(/\s+/g, '-')}-header${groupIndex !== null ? `-${groupIndex}` : ''}`; container.innerHTML = `<label id="${headerId}" class="block text-lg font-medium mb-2">${label}</label><select data-action="change-date-type" data-date-key="${dateKey}" ${gIndexAttr} class="w-full p-2 bg-gray-700 rounded-md mb-4"><option value="relative" ${stateObject.type==='relative'?'selected':''}>Relative</option><option value="absolute" ${stateObject.type==='absolute'?'selected':''}>Absolute</option>${dateKey === 'end_date' ? `<option value="relative_to_start" ${stateObject.type==='relative_to_start'?'selected':''}>Relative to Start</option>` : ''}</select><div data-container="date-options"></div>`; const optionsContainer = container.querySelector('[data-container="date-options"]'); if (stateObject.type === 'relative') { optionsContainer.innerHTML = createRelativeOptions(dateKey, stateObject, groupIndex); } else if (stateObject.type === 'absolute') { optionsContainer.innerHTML = createAbsoluteOptions(dateKey, stateObject); } else if (stateObject.type === 'relative_to_start') { optionsContainer.innerHTML = createRelativeToStartOptions(dateKey, stateObject); } container.insertAdjacentHTML('beforeend', createRefinementOptions(dateKey, stateObject, groupIndex)); return container; }
+        setValueByPath(rule, path, value);
         
-        function createRelativeOptions(dateKey, state, groupIndex) {
-            const safeState = state['relative-minor'];
-            let dirOpts;
-
-            if (dateKey.includes('effective.end')) {
-                dirOpts = [...DIRECTION_OPTIONS.effectiveEnd]; 
-            } else if (dateKey.includes('effective')) {
-                dirOpts = [...DIRECTION_OPTIONS.effectiveStart]; 
-            } else {
-                dirOpts = DIRECTION_OPTIONS.standard;
+        if (path.endsWith('.relative-minor.unit') && value === 'QUARTERS') {
+            const minorPath = path.substring(0, path.lastIndexOf('.'));
+            const minorState = getValueByPath(rule, minorPath);
+            if (minorState.snap_to === null) {
+                setValueByPath(rule, `${minorPath}.snap_to`, 'beginning');
             }
-
-            if (dateKey.includes('effective')) {
-                const rule = groupIndex !== null ? appState.ruleGroups[groupIndex].rule : appState.singleRule;
-                const globalDateValue = rule['global-relative-from-today'];
-                const globalDateText = globalDateValue === 'today'
-                    ? 'Today'
-                    : new Date(globalDateValue + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-                dirOpts.push({ value: 'before-global-relative-date', text: `Before ${globalDateText}` });
-                dirOpts.push({ value: 'after-global-relative-date', text: `After ${globalDateText}` });
-            }
-
-            const snapToValue = safeState.snap_to;
-            const showSnap = ['WEEKS','MONTHS','QUARTERS'].includes(safeState.unit);
-            const gIndexAttr = groupIndex !== null ? `data-group-index="${groupIndex}"` : '';
-            let skipWeekendsHtml = '';
-            if (safeState.unit === 'DAYS') {
-                skipWeekendsHtml = `<div class="mt-4 pt-4 border-t border-gray-600/50"><label class="flex items-center justify-between cursor-pointer"><span class="text-sm font-medium text-gray-300">Skip over weekends</span><input type="checkbox" data-path="${dateKey}.relative-minor.skip_weekends" ${safeState.skip_weekends ? 'checked' : ''} class="h-4 w-4 rounded bg-gray-700"></label><p class="text-xs text-gray-400 mt-2 font-light">Day counting will jump over Saturday and Sunday. Ex: 1 day before Monday becomes the preceding Friday.</p></div>`;
-            }
-            const snapButtonsHtml = showSnap ? `<div class="mt-4 pt-4 border-t border-gray-600/50 grid grid-cols-2 gap-3"><button data-action="snap-toggle" data-snap="beginning" data-date-key="${dateKey}" ${gIndexAttr} class="text-sm py-2 rounded-md ${snapToValue==='beginning'?'bg-blue-600 text-white':'bg-gray-500'}">Snap to Beginning</button><button data-action="snap-toggle" data-snap="end" data-date-key="${dateKey}" ${gIndexAttr} class="text-sm py-2 rounded-md ${snapToValue==='end'?'bg-blue-600 text-white':'bg-gray-500'}">Snap to End</button></div>` : '';
-            return `<div class="grid grid-cols-3 gap-3"><input type="number" data-path="${dateKey}.relative-minor.value" value="${safeState.value}" class="w-full p-2 bg-gray-600 rounded-md"><select data-path="${dateKey}.relative-minor.unit" data-rerender="true" class="w-full p-2 bg-gray-600 rounded-md">${UNITS.map(u=>`<option ${safeState.unit===u?'selected':''}>${u}</option>`).join('')}</select><select data-path="${dateKey}.relative-minor.direction" class="w-full p-2 bg-gray-600 rounded-md">${dirOpts.map(o=>`<option value="${o.value}" ${safeState.direction===o.value?'selected':''}>${o.text}</option>`).join('')}</select></div>${skipWeekendsHtml}${snapButtonsHtml}`;
         }
-
-        function createRefinementOptions(dateKey, state, groupIndex) { const gIndexAttr = groupIndex !== null ? `data-group-index="${groupIndex}"` : ''; const rWeekday = state['refine-by-weekday']; const rDays = state['refine-by-days']; const weekdayOptionsHTML = rWeekday.enabled ? `<div class="grid grid-cols-3 gap-3 p-3 bg-gray-900/50 rounded-md"><select data-path="${dateKey}.refine-by-weekday.position" class="w-full p-2 bg-gray-600 rounded-md">${REFINE_POSITIONS.map(p=>`<option ${rWeekday.position===p?'selected':''}>${p}</option>`).join('')}</select><select data-path="${dateKey}.refine-by-weekday.direction" class="w-full p-2 bg-gray-600 rounded-md">${REFINE_DIRECTIONS.map(d=>`<option ${rWeekday.direction===d?'selected':''}>${d}</option>`).join('')}</select><select data-path="${dateKey}.refine-by-weekday.weekday" class="w-full p-2 bg-gray-600 rounded-md">${DAYS.map(d=>`<option ${rWeekday.weekday===d?'selected':''}>${d}</option>`).join('')}</select></div>` : ''; const daysOptionsHTML = rDays.enabled ? `<div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 p-3 bg-gray-900/50 rounded-md"><input type="number" data-path="${dateKey}.refine-by-days.value" value="${rDays.value||0}" class="w-full p-2 bg-gray-600 rounded-md"><span class="text-sm">days</span><select data-path="${dateKey}.refine-by-days.direction" class="w-full p-2 bg-gray-600 rounded-md">${REFINE_DIRECTIONS.map(d=>`<option ${rDays.direction===d?'selected':''}>${d}</option>`).join('')}</select></div>` : ''; return `<div class="mt-4 pt-4 border-t border-gray-600/50 space-y-2"><div class="flex gap-4"><button data-action="refine-toggle" data-refine-type="weekday" data-date-key="${dateKey}" ${gIndexAttr} class="flex-1 text-sm py-2 rounded-md ${rWeekday.enabled?'bg-blue-600 text-white font-semibold':'bg-gray-600 hover:bg-gray-500'}">Refine by Weekday</button><button data-action="refine-toggle" data-refine-type="days" data-date-key="${dateKey}" ${gIndexAttr} class="flex-1 text-sm py-2 rounded-md ${rDays.enabled?'bg-blue-600 text-white font-semibold':'bg-gray-600 hover:bg-gray-500'}">Refine by Days</button></div><div class="mt-2 space-y-2">${weekdayOptionsHTML}${daysOptionsHTML}</div></div>`; }
-        function createAbsoluteOptions(dateKey, state) { return `<input type="date" data-path="${dateKey}.value" value="${state.value}" class="w-full p-2 bg-gray-600 rounded-md">`; }
-        function createRelativeToStartOptions(dateKey, state) { const isZero=state.value===0; return `<div class="grid grid-cols-2 gap-3"><input type="number" data-path="${dateKey}.value" data-rerender="true" value="${state.value}" class="w-full p-2 bg-gray-600 rounded-md"><select data-path="${dateKey}.unit" ${isZero?'disabled':''} class="w-full p-2 bg-gray-600 rounded-md ${isZero?'opacity-50':''}">${UNITS.map(u=>`<option ${state.unit===u?'selected':''}>${u}</option>`).join('')}</select></div>`; }
         
-        function renderDayFilters(formContainer, dayFilterState) { const el = formContainer.querySelector('[data-container="day-filter-list"]'); el.innerHTML = ''; dayFilterState.forEach((filter, index) => { const fEl = document.createElement('div'); fEl.className='bg-gray-700 p-3 rounded-md flex items-center justify-between'; let content=''; if(filter.type==='inclusive_days_of_week') { content=`<div class="flex-grow"><p class="font-medium">Inclusive Days of Week</p><div class="flex flex-wrap gap-x-4 gap-y-1 mt-2">${DAYS.map(d=>`<label class="flex items-center text-sm"><input type="checkbox" data-path="day_filter.${index}.days" data-day="${d}" ${filter.days.includes(d)?'checked':''} class="h-4 w-4 rounded"><span class="ml-1.5">${d}</span></label>`).join('')}</div></div>`; } else if (filter.type === 'exclude_holidays') { content=`<p class="flex-grow font-medium">Exclude Holidays</p>`; } else { content=`<div class="flex-grow flex items-center gap-2"><span class="text-sm">Days between</span><select data-path="day_filter.${index}.lower_bound" class="p-1 bg-gray-600 rounded">${Array.from({length:31},(_,i)=>`<option value="${i+1}" ${filter.lower_bound===i+1?'selected':''}>${getOrdinal(i+1)}</option>`).join('')}</select> and <select data-path="day_filter.${index}.upper_bound" class="p-1 bg-gray-600 rounded">${Array.from({length:31},(_,i)=>`<option value="${i+1}" ${filter.upper_bound===i+1?'selected':''}>${getOrdinal(i+1)}</option>`).join('')}</select></div>`; } fEl.innerHTML = content + `<button data-action="remove-day-filter" data-day-filter-index="${index}" class="ml-4 bg-red-600 text-white py-1 px-2 rounded text-xs">Remove</button>`; el.appendChild(fEl); }); }
-
-        // --- UI Rendering ---
-        function rerender() {
-            mainRuleContainerEl.innerHTML = '';
-            if (appState.advancedModeEnabled) {
-                const assignedDays = new Set(appState.ruleGroups.flatMap(g => g.days));
-                appState.ruleGroups.forEach((group, index) => {
-                    const groupWrapper = document.createElement('div'); groupWrapper.className = 'group-container'; groupWrapper.innerHTML = `<div class="group-header"><h2 class="text-2xl font-bold text-teal-300">Group ${index + 1}</h2>${index > 0 ? `<button data-action="remove-group" data-group-index="${index}" class="bg-red-600 text-white py-1 px-3 rounded text-sm">Remove</button>` : '<div></div>'}</div>`;
-                    const daySelector = document.createElement('div'); daySelector.innerHTML = '<p class="font-medium mb-2">Rule applies to these days:</p>';
-                    const dayGrid = document.createElement('div'); dayGrid.className = 'flex flex-wrap gap-x-4 gap-y-2';
-                    DAYS.forEach(day => { const isChecked=group.days.includes(day); const isDisabled=!isChecked&&assignedDays.has(day); dayGrid.innerHTML += `<label class="flex items-center text-sm ${isDisabled ? 'day-selector-disabled' : 'cursor-pointer'}"><input type="checkbox" data-action="toggle-day" data-group-index="${index}" data-day="${day}" ${isChecked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''} class="h-4 w-4 rounded bg-gray-600 text-teal-500"><span class="ml-1.5">${day}</span></label>`; });
-                    daySelector.appendChild(dayGrid); groupWrapper.appendChild(daySelector); groupWrapper.appendChild(document.createElement('hr')).className = 'my-6 border-gray-700'; groupWrapper.appendChild(createCompleteRuleForm(group.rule, index)); mainRuleContainerEl.appendChild(groupWrapper);
-                });
-                if (assignedDays.size < DAYS.length) { mainRuleContainerEl.innerHTML += `<button data-action="add-group" class="w-full bg-teal-600 hover:bg-teal-700 font-semibold py-3 px-4 rounded-md mt-4">Add Rule Group</button>`; }
-            } else {
-                mainRuleContainerEl.appendChild(createCompleteRuleForm(appState.singleRule, null));
+        if (target.dataset.rerender) {
+            rerender();
+        } else {
+            if(path === 'ignore_missing') {
+                target.closest('[data-form-container]').querySelector('[data-container="ignore-missing-desc"]').textContent = value ? "No error on missing data." : "Error on missing data.";
             }
             publishJsonUpdate();
         }
-        
-        // --- Event Handlers ---
-        mainRuleContainerEl.addEventListener('input', e => {
-            const target = e.target;
-            const path = target.dataset.path;
-            if (!path) return;
-            
-            const rule = getRuleFromTarget(target);
-            if (!rule) return;
-            
-            let value;
+    });
 
-            if (path.includes('day_filter') && path.endsWith('.days') && target.dataset.day) {
-                const day = target.dataset.day;
-                const currentDaysPath = path;
-                const parentPath = currentDaysPath.substring(0, currentDaysPath.lastIndexOf('.'));
-                const filterObject = getValueByPath(rule, parentPath);
-                
-                const currentDays = filterObject.days || [];
-                const daySet = new Set(currentDays);
+    // (The rest of the listeners: click, change, DOMContentLoaded are unchanged)
+    mainRuleContainerEl.addEventListener('click', e => { const button = e.target.closest('button[data-action]'); if (!button) return; const action = button.dataset.action; if (action === 'add-group') { appState.ruleGroups.push({ days: [], rule: deepClone(appState.ruleGroups[0].rule) }); rerender(); return; } const groupIndex = button.dataset.groupIndex !== undefined ? parseInt(button.dataset.groupIndex, 10) : null; if (action === 'remove-group') { if (groupIndex !== null) { appState.ruleGroups.splice(groupIndex, 1); rerender(); } return; } const rule = getRuleFromTarget(button); if (!rule) return; if (action === 'refine-toggle') { const dateKey = button.dataset.dateKey; const type = button.dataset.refineType; const prop = `refine-by-${type}`; const dateState = getValueByPath(rule, dateKey); dateState[prop].enabled = !dateState[prop].enabled; if(dateState[prop].enabled) { const otherProp = type === 'weekday' ? 'refine-by-days' : 'refine-by-weekday'; dateState[otherProp].enabled = false; } rerender(); } else if (action === 'snap-toggle') { const dateKey = button.dataset.dateKey; const snapVal = button.dataset.snap; const dateState = getValueByPath(rule, dateKey); const minorState = dateState['relative-minor']; const isQuarter = minorState.unit === 'QUARTERS'; if (!isQuarter || minorState.snap_to !== snapVal) { minorState.snap_to = minorState.snap_to === snapVal ? null : snapVal; } rerender(); } else if (action === 'add-day-filter') { const type = button.previousElementSibling.value; const ruleToUpdate = getRuleFromTarget(button); if (type === 'inclusive_days_of_week') ruleToUpdate.day_filter.push({ type, days: [] }); else if (type === 'exclude_holidays') ruleToUpdate.day_filter.push({ type }); else ruleToUpdate.day_filter.push({ type, lower_bound: 1, upper_bound: 15 }); rerender(); } else if (action === 'remove-day-filter') { const ruleToUpdate = getRuleFromTarget(button); ruleToUpdate.day_filter.splice(parseInt(button.dataset.dayFilterIndex), 1); rerender(); } });
+    mainRuleContainerEl.addEventListener('change', e => { const select = e.target.closest('select[data-action]'); if(!select) return; const action = select.dataset.action; if (action === 'change-date-type') { const newType = select.value; const dateKey = select.dataset.dateKey; const rule = getRuleFromTarget(select); if(!rule) return; const dateState = getValueByPath(rule, dateKey); const refinements = {"refine-by-weekday": dateState["refine-by-weekday"], "refine-by-days": dateState["refine-by-days"]}; Object.keys(dateState).forEach(key => delete dateState[key]); dateState.type = newType; if (newType === 'relative') { dateState['relative-minor'] = { value: 1, unit: 'WEEKS', direction: 'AGO', snap_to: null, skip_weekends: false }; if (dateKey.startsWith('effective')) dateState['relative-minor'].direction = 'after-end-date'; } else if (newType === 'absolute') { dateState.value = new Date().toISOString().split('T')[0]; } else if (newType === 'relative_to_start') { dateState.value = 3; dateState.unit = 'MONTHS'; } dateState["refine-by-weekday"] = refinements["refine-by-weekday"]; dateState["refine-by-days"] = refinements["refine-by-days"]; rerender(); } });
+    document.body.addEventListener('click', e => { if (e.target.dataset.action === 'toggle-day') { const button = e.target; const groupIndex = parseInt(button.dataset.groupIndex); const day = button.dataset.day; const daySet = new Set(appState.ruleGroups[groupIndex].days); if(button.checked) daySet.add(day); else daySet.delete(day); appState.ruleGroups[groupIndex].days = Array.from(daySet).sort((a,b)=>DAYS.indexOf(a)-DAYS.indexOf(b)); rerender(); } });
 
-                if (target.checked) daySet.add(day);
-                else daySet.delete(day);
-
-                value = Array.from(daySet).sort((a,b) => DAYS.indexOf(a) - DAYS.indexOf(b));
-                setValueByPath(rule, currentDaysPath, value);
-                publishJsonUpdate();
-                return;
-            }
-
-            value = target.type === 'checkbox' ? target.checked : (target.type === 'number' ? parseInt(target.value) || 0 : target.value);
-
-            if (path === 'global-relative-from-today' && target.type === 'checkbox') {
-                value = value ? 'today' : new Date().toISOString().split('T')[0];
-            }
-            
-            setValueByPath(rule, path, value);
-            
-            // --- START CHANGE 1 ---
-            // If the unit was just changed to QUARTERS, enforce snap_to.
-            if (path.endsWith('.relative-minor.unit') && value === 'QUARTERS') {
-                const minorPath = path.substring(0, path.lastIndexOf('.'));
-                const minorState = getValueByPath(rule, minorPath);
-                if (minorState.snap_to === null) {
-                    setValueByPath(rule, `${minorPath}.snap_to`, 'beginning');
-                }
-            }
-            // --- END CHANGE 1 ---
-            
-            if (target.dataset.rerender) {
-                rerender();
-            } else {
-                if(path === 'ignore_missing') {
-                    target.closest('[data-form-container]').querySelector('[data-container="ignore-missing-desc"]').textContent = value ? "No error on missing data." : "Error on missing data.";
-                }
-                publishJsonUpdate();
-            }
-        });
-
-        mainRuleContainerEl.addEventListener('click', e => { const button = e.target.closest('button[data-action]'); if (!button) return; const action = button.dataset.action; if (action === 'add-group') { appState.ruleGroups.push({ days: [], rule: deepClone(appState.ruleGroups[0].rule) }); rerender(); return; } const groupIndex = button.dataset.groupIndex !== undefined ? parseInt(button.dataset.groupIndex, 10) : null; if (action === 'remove-group') { if (groupIndex !== null) { appState.ruleGroups.splice(groupIndex, 1); rerender(); } return; } const rule = getRuleFromTarget(button); if (!rule) return; if (action === 'refine-toggle') { const dateKey = button.dataset.dateKey; const type = button.dataset.refineType; const prop = `refine-by-${type}`; const dateState = getValueByPath(rule, dateKey); dateState[prop].enabled = !dateState[prop].enabled; if(dateState[prop].enabled) { const otherProp = type === 'weekday' ? 'refine-by-days' : 'refine-by-weekday'; dateState[otherProp].enabled = false; } rerender(); } else if (action === 'snap-toggle') {
-            const dateKey = button.dataset.dateKey;
-            const snapVal = button.dataset.snap;
-            const dateState = getValueByPath(rule, dateKey);
-            
-            // --- START CHANGE 2 ---
-            const minorState = dateState['relative-minor'];
-            const isQuarter = minorState.unit === 'QUARTERS';
-            
-            // Allow toggle only if it's NOT a quarter, OR if they are clicking a different button.
-            // This prevents un-toggling the active button for quarters.
-            if (!isQuarter || minorState.snap_to !== snapVal) {
-                minorState.snap_to = minorState.snap_to === snapVal ? null : snapVal;
-            }
-            // --- END CHANGE 2 ---
-
-            rerender(); 
-        } else if (action === 'add-day-filter') { const type = button.previousElementSibling.value; const ruleToUpdate = getRuleFromTarget(button); if (type === 'inclusive_days_of_week') ruleToUpdate.day_filter.push({ type, days: [] }); else if (type === 'exclude_holidays') ruleToUpdate.day_filter.push({ type }); else ruleToUpdate.day_filter.push({ type, lower_bound: 1, upper_bound: 15 }); rerender(); } else if (action === 'remove-day-filter') { const ruleToUpdate = getRuleFromTarget(button); ruleToUpdate.day_filter.splice(parseInt(button.dataset.dayFilterIndex), 1); rerender(); } });
-        
-        mainRuleContainerEl.addEventListener('change', e => { const select = e.target.closest('select[data-action]'); if(!select) return; const action = select.dataset.action; if (action === 'change-date-type') { const newType = select.value; const dateKey = select.dataset.dateKey; const rule = getRuleFromTarget(select); if(!rule) return; const dateState = getValueByPath(rule, dateKey); const refinements = {"refine-by-weekday": dateState["refine-by-weekday"], "refine-by-days": dateState["refine-by-days"]}; Object.keys(dateState).forEach(key => delete dateState[key]); dateState.type = newType; if (newType === 'relative') { dateState['relative-minor'] = { value: 1, unit: 'WEEKS', direction: 'AGO', snap_to: null, skip_weekends: false }; if (dateKey.startsWith('effective')) dateState['relative-minor'].direction = 'after-end-date'; } else if (newType === 'absolute') { dateState.value = new Date().toISOString().split('T')[0]; } else if (newType === 'relative_to_start') { dateState.value = 3; dateState.unit = 'MONTHS'; } dateState["refine-by-weekday"] = refinements["refine-by-weekday"]; dateState["refine-by-days"] = refinements["refine-by-days"]; rerender(); } });
-        document.body.addEventListener('click', e => { if (e.target.dataset.action === 'toggle-day') { const button = e.target; const groupIndex = parseInt(button.dataset.groupIndex); const day = button.dataset.day; const daySet = new Set(appState.ruleGroups[groupIndex].days); if(button.checked) daySet.add(day); else daySet.delete(day); appState.ruleGroups[groupIndex].days = Array.from(daySet).sort((a,b)=>DAYS.indexOf(a)-DAYS.indexOf(b)); rerender(); } });
-
-        // --- INITIALIZATION ---
-        document.addEventListener('DOMContentLoaded', () => {
-            advancedModeToggleEl.addEventListener('change', (e) => { appState.advancedModeEnabled = e.target.checked; if (appState.advancedModeEnabled && appState.ruleGroups.length === 0) { const newGroupRule = deepClone(initialRuleState_full); appState.ruleGroups.push({ days: [...DAYS], rule: newGroupRule }); } rerender(); });
-            copyJsonBtn.addEventListener('click', () => { navigator.clipboard.writeText(jsonOutputEl.textContent).then(() => { copyJsonBtn.textContent = 'Copied!'; setTimeout(() => { copyJsonBtn.textContent = 'Copy JSON'; }, 2000); }); });
-            rerender();
-        });
-    </script>
-
+    // --- INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+        advancedModeToggleEl.addEventListener('change', (e) => { appState.advancedModeEnabled = e.target.checked; if (appState.advancedModeEnabled && appState.ruleGroups.length === 0) { const newGroupRule = deepClone(initialRuleState_full); appState.ruleGroups.push({ days: [...DAYS], rule: newGroupRule }); } rerender(); });
+        copyJsonBtn.addEventListener('click', () => { navigator.clipboard.writeText(jsonOutputEl.textContent).then(() => { copyJsonBtn.textContent = 'Copied!'; setTimeout(() => { copyJsonBtn.textContent = 'Copy JSON'; }, 2000); }); });
+        rerender();
+    });
+</script>
 
 <script type="py">
 from js import document, console, setTimeout
