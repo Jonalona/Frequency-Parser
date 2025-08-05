@@ -138,7 +138,7 @@
             return formContainer;
         }
 
-        function createDateBuilder(label, dateKey, stateObject, groupIndex) { const gIndexAttr = groupIndex !== null ? `data-group-index="${groupIndex}"` : ''; const container = document.createElement('div'); container.className = 'border border-gray-700 p-4 rounded-md'; const headerId = `${label.toLowerCase().replace(/\s+/g, '-')}-header`; container.innerHTML = `<label id="${headerId}" class="block text-lg font-medium mb-2">${label}</label><select data-action="change-date-type" data-date-key="${dateKey}" ${gIndexAttr} class="w-full p-2 bg-gray-700 rounded-md mb-4"><option value="relative" ${stateObject.type==='relative'?'selected':''}>Relative</option><option value="absolute" ${stateObject.type==='absolute'?'selected':''}>Absolute</option>${dateKey === 'end_date' ? `<option value="relative_to_start" ${stateObject.type==='relative_to_start'?'selected':''}>Relative to Start</option>` : ''}</select><div data-container="date-options"></div>`; const optionsContainer = container.querySelector('[data-container="date-options"]'); if (stateObject.type === 'relative') { optionsContainer.innerHTML = createRelativeOptions(dateKey, stateObject, groupIndex); } else if (stateObject.type === 'absolute') { optionsContainer.innerHTML = createAbsoluteOptions(dateKey, stateObject); } else if (stateObject.type === 'relative_to_start') { optionsContainer.innerHTML = createRelativeToStartOptions(dateKey, stateObject); } container.insertAdjacentHTML('beforeend', createRefinementOptions(dateKey, stateObject, groupIndex)); return container; }
+        function createDateBuilder(label, dateKey, stateObject, groupIndex) { const gIndexAttr = groupIndex !== null ? `data-group-index="${groupIndex}"` : ''; const container = document.createElement('div'); container.className = 'border border-gray-700 p-4 rounded-md'; const headerId = `${label.toLowerCase().replace(/\s+/g, '-')}-header${groupIndex !== null ? `-${groupIndex}` : ''}`; container.innerHTML = `<label id="${headerId}" class="block text-lg font-medium mb-2">${label}</label><select data-action="change-date-type" data-date-key="${dateKey}" ${gIndexAttr} class="w-full p-2 bg-gray-700 rounded-md mb-4"><option value="relative" ${stateObject.type==='relative'?'selected':''}>Relative</option><option value="absolute" ${stateObject.type==='absolute'?'selected':''}>Absolute</option>${dateKey === 'end_date' ? `<option value="relative_to_start" ${stateObject.type==='relative_to_start'?'selected':''}>Relative to Start</option>` : ''}</select><div data-container="date-options"></div>`; const optionsContainer = container.querySelector('[data-container="date-options"]'); if (stateObject.type === 'relative') { optionsContainer.innerHTML = createRelativeOptions(dateKey, stateObject, groupIndex); } else if (stateObject.type === 'absolute') { optionsContainer.innerHTML = createAbsoluteOptions(dateKey, stateObject); } else if (stateObject.type === 'relative_to_start') { optionsContainer.innerHTML = createRelativeToStartOptions(dateKey, stateObject); } container.insertAdjacentHTML('beforeend', createRefinementOptions(dateKey, stateObject, groupIndex)); return container; }
         
         function createRelativeOptions(dateKey, state, groupIndex) {
             const safeState = state['relative-minor'];
@@ -985,17 +985,13 @@ import ast
 
 def on_json_update(event):
     """
-    This function runs AFTER the JavaScript has finished rendering
-    and has updated the JSON output.
+    This function handles both simple and advanced (day-specific) modes.
     """
     console.log("🐍 'jsonUpdated' event received. Running Python logic.")
-
-    # Get the newly generated JSON string
     json_output_element = document.getElementById("json-output")
     json_string = json_output_element.textContent
     
     if not json_string:
-        console.log("🐍 JSON is empty, skipping update.")
         return
 
     rule_dict = None
@@ -1005,33 +1001,65 @@ def on_json_update(event):
         console.error(f"🐍 Error parsing the rule string: {e}")
         return
 
-    if rule_dict:
+    # Check if we are in Advanced Mode (Day-Specific Rules)
+    if 'group-1' in rule_dict:
+        console.log("🐍 Advanced mode detected. Processing groups.")
+        # Loop through each group in the dictionary
+        for group_name, single_rule in rule_dict.items():
+            try:
+                # --- Construct the dynamic ID ---
+                # Get the index from the group name (e.g., 'group-1' -> 0)
+                group_index = int(group_name.split('-')[1]) - 1
+
+                parser = DateRuleParser(single_rule)
+                parsed_results = parser.get_results_dict()
+                start_date_str = str(parsed_results["start_date"])
+                end_date_str = str(parsed_results["end_date"])
+                effective_start_date_str = str(parsed_results["effective_start_date"])
+                effective_end_date_str = str(parsed_results["effective_end_date"])
+
+                # --- Find elements using the unique, dynamic IDs ---
+                start_date_header = document.getElementById(f'start-date-header-{group_index}')
+                if start_date_header: start_date_header.textContent = f"Start Date: {start_date_str}"
+                
+                end_date_header = document.getElementById(f'end-date-header-{group_index}')
+                if end_date_header: end_date_header.textContent = f"End Date: {end_date_str}"
+
+                effective_start_date_header = document.getElementById(f'effective-start-date-header-{group_index}')
+                if effective_start_date_header: effective_start_date_header.textContent = f"Effective Start Date: {effective_start_date_str}"
+                
+                effective_end_date_header = document.getElementById(f'effective-end-date-header-{group_index}')
+                if effective_end_date_header: effective_end_date_header.textContent = f"Effective End Date: {effective_end_date_str}"
+
+            except Exception as e:
+                console.error(f"🐍 Error processing rule for {group_name}: {e}")
+    else:
+        # This is Simple Mode, run the original logic with static IDs
+        console.log("🐍 Simple mode detected. Processing single rule.")
         try:
-            #generates the dates
             parser = DateRuleParser(rule_dict)
             parsed_results = parser.get_results_dict()
+            # ... (rest of the simple mode logic is the same as before) ...
             start_date_str = str(parsed_results["start_date"])
             end_date_str = str(parsed_results["end_date"])
             effective_start_date_str = str(parsed_results["effective_start_date"])
             effective_end_date_str = str(parsed_results["effective_end_date"])
             
-            # Update the HTML element with the parsed date
             start_date_header = document.getElementById('start-date-header')
-            end_date_header = document.getElementById('end-date-header')
-            effective_start_date_header = document.getElementById('effective-start-date-header')
-            effective_end_date_header = document.getElementById('effective-end-date-header')
+            if start_date_header: start_date_header.textContent = f"Start Date: {start_date_str}"
             
-            if start_date_header:
-                start_date_header.textContent = f"Start Date: {start_date_str}"
-            if end_date_header:
-                end_date_header.textContent = f"End Date: {end_date_str}"
-            if effective_start_date_header:
-                effective_start_date_header.textContent = f"Effective Start Date: {effective_start_date_str}"
-            if effective_end_date_header:
-                effective_end_date_header.textContent = f"Effective End Date: {effective_end_date_str}"
+            end_date_header = document.getElementById('end-date-header')
+            if end_date_header: end_date_header.textContent = f"End Date: {end_date_str}"
+
+            effective_start_date_header = document.getElementById('effective-start-date-header')
+            if effective_start_date_header: effective_start_date_header.textContent = f"Effective Start Date: {effective_start_date_str}"
+            
+            effective_end_date_header = document.getElementById('effective-end-date-header')
+            if effective_end_date_header: effective_end_date_header.textContent = f"Effective End Date: {effective_end_date_str}"
 
         except Exception as e:
             console.error(f"🐍 Error during date parsing or DOM update: {e}")
+
 
 
 # Create a proxy for our new handler
@@ -1040,7 +1068,9 @@ on_json_update_proxy = create_proxy(on_json_update)
 # Now, listen for our specific, custom event instead of a generic 'click'
 document.addEventListener("jsonUpdated", on_json_update_proxy)
 
-
+# Manually call the function once right now to process the initial state of the page.
+#this causes date header dates to be set on page load
+on_json_update(None)
 
 
 
