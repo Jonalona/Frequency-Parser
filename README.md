@@ -1,6 +1,6 @@
 # Frequency Parser
 
-### 🚀 Live Demo
+## 🚀 Live Demo
 
 https://jonalona.github.io/Frequency-Parser/
 
