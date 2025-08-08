@@ -1,5 +1,8 @@
 # Frequency Parser
 
+### 🚀 Live Demo
+
+https://jonalona.github.io/Frequency-Parser/
 
 ## Project Overview
 Developed during my internship at Restaurant Depot, a bulk wholesale food provider.  
