@@ -34,23 +34,27 @@ The goal of this project was to replace the legacy system with an intuitive UI t
 - **Comprehensive Unit Testing**  
   - 100% test coverage on core parsing logic  
   - Includes edge cases for leap years, business-day adjustments, and overlapping periods  
+
+
 ## Frontend Architecture & Development
 
-When I first built the **Dynamic Date-Range Query Builder**, the UI was intended only as an MVP—and I accelerated prototyping by feeding a clear spec to a large language model (LLM). The LLM generated all the necessary JavaScript, HTML, CSS, and Bootstrap code for:
+When I first built the **Dynamic Date-Range Query Builder**, the UI was intended as an MVP. To accelerate prototyping, I provided a clear spec to a large language model (LLM), which generated all the necessary JavaScript, HTML, CSS, and Bootstrap code for:  
 
 - **Date-range picker behavior** (single vs. sliding window)  
 - **Preset query templates** (“last 30 days,” “year-to-date,” etc.)  
-- **Custom filter panels** (tables, dropdowns, free-text inputs)
+- **Custom filter panels** (tables, dropdowns, free-text inputs)  
 
-As the requirements solidified, I discovered that the LLM-generated frontend fully met our needs—so today the **entire front end** remains the LLM output, polished and styled with Bootstrap for a consistent look and feel.
+As requirements solidified, I found the LLM-generated frontend fully met our needs. Today, the **entire frontend** remains the LLM output, polished and styled with Bootstrap for consistency.  
 
-Behind the scenes, I:
+Behind the scenes, I:  
 
 1. **Mapped user journeys & wireframes**  
    Defined how the RFP/pricing team would select date ranges, filters, and templates, then sketched UI flows to guide the LLM’s component generation.  
-2. **Architected the component hierarchy**  
-   Designed a clear tree of containers, pickers, and result tables so new features slot in seamlessly without regressions.  
-3. **Authored every backend service**  
-   Hand-wrote all database models, API endpoints, and query-builder logic in Python/Flask and T-SQL to power each frontend action.
 
-This hybrid approach let me move from concept to prototype in days, then harden both front and back ends into a robust tool the pricing team can rely on daily.  
+2. **Architected the component hierarchy**  
+   Designed a clear tree of containers, pickers, and result tables to enable seamless addition of new features without regressions.  
+
+3. **Authored every backend service**  
+   Hand-wrote all database models, API endpoints, and query-builder logic in Python/Flask and T-SQL to power each frontend action.  
+
+This hybrid approach enabled rapid prototyping and hardening into a robust tool the pricing team relies on daily.
