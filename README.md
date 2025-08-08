@@ -23,6 +23,7 @@ The goal of this project was to replace the legacy system with an intuitive UI t
   - Snap to beginning/end of week, month, or quarter
   - Further specificy date ranges by stopping/starting at the first/second/etc following/preceding Monday/Tuesday.../Sunday
   - Define different contract rules by weekday for especially complex contracts
+  - Pattern filtering to select specific days between the Start and End Dates (e.g., exclude holidays, Tuesdays, or every 4th week)
 
 - **Live JSON Preview**  
   - Automatically generates a clean, structured JSON object for all user selections  
@@ -41,19 +42,13 @@ The goal of this project was to replace the legacy system with an intuitive UI t
 
 ## Frontend Architecture & Development
 
-When I first built the **Dynamic Date-Range Query Builder**, the UI was intended as an MVP. To accelerate prototyping, I provided a clear spec to a large language model (LLM), which generated all the necessary JavaScript, HTML, CSS, and Bootstrap code for the UI.  
+When I first built the **Dynamic Date-Range Query Builder**, the UI was intended as an MVP. To accelerate prototyping, I provided a clear spec to a large language model (LLM), which generated all the necessary `JavaScript`, `HTML`, `CSS`, and `Bootstrap` code for the UI.  
 
-As requirements solidified, I found the LLM-generated frontend fully met our needs. Today, the **entire frontend** remains the LLM output, polished and styled with Bootstrap for consistency.  
+As requirements solidified, I found the LLM-generated frontend fully met our needs. Today, the **entire frontend** remains LLM output, polished and styled with Bootstrap for consistency.  
 
-Behind the scenes, I:  
-
-1. **Mapped user journeys & wireframes**  
-   Defined how the RFP/pricing team would select date ranges, filters, and templates, then sketched UI flows to guide the LLM’s component generation.  
-
-2. **Architected the component hierarchy**  
-   Designed a clear tree of containers, pickers, and result tables to enable seamless addition of new features without regressions.  
-
-3. **Authored every backend service**  
-   Hand-wrote all database models, API endpoints, and query-builder logic in Python/Flask and T-SQL to power each frontend action.  
 
 This hybrid approach enabled rapid prototyping and hardening into a robust tool the pricing team relies on daily.
+
+The JSON parsing backend was written in `Python`. In order to provide feedback on what the selected dates are, I setup `Pyscript` in the front end to run the `Python backend` inside the web browser. 
+
+## Frontend Architecture & Development
