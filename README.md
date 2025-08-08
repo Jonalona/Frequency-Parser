@@ -21,7 +21,7 @@ The goal of this project was to replace the legacy system with an intuitive UI t
   - Choose from predefined frequency types (e.g., *average rate over last calendar month*, *first business day of quarter*)  
   - Combine multiple rules into a single, complex contract
   - Snap to beginning/end of week, month, or quarter
-  - Further specificy date ranges by stopping/starting at the first/second/etc following/preceding Monday/Tuesday.../Sunday
+  - Further specify date ranges by stopping/starting at the first/second/etc following/preceding Monday/Tuesday.../Sunday
   - Define different contract rules by weekday for especially complex contracts
   - Pattern filtering to select specific days between the Start and End Dates (e.g., exclude holidays, Tuesdays, or every 4th week)
 
@@ -47,9 +47,9 @@ When I first built the **Dynamic Date-Range Query Builder**, the UI was intended
 As requirements solidified, I found the LLM-generated frontend fully met our needs. Today, the **entire frontend** remains LLM output, polished and styled with Bootstrap for consistency.  
 
 
-This hybrid approach enabled rapid prototyping and hardening into a robust tool the pricing team relies on daily.
+This hybrid approach enabled rapid prototyping and hardened the project into a robust tool the pricing team relies on daily.
 
-The JSON parsing backend was written in `Python`. In order to provide feedback on what the selected dates are, I setup `Pyscript` in the front end to run the `Python` backend inside the web browser. 
+To provide real-time feedback on selected dates, I integrated `Pyscript` in the frontend to run the Python backend directly inside the web browser.
 
 ## Backend
 
