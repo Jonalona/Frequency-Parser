@@ -49,6 +49,6 @@ As requirements solidified, I found the LLM-generated frontend fully met our nee
 
 This hybrid approach enabled rapid prototyping and hardening into a robust tool the pricing team relies on daily.
 
-The JSON parsing backend was written in `Python`. In order to provide feedback on what the selected dates are, I setup `Pyscript` in the front end to run the `Python backend` inside the web browser. 
+The JSON parsing backend was written in `Python`. In order to provide feedback on what the selected dates are, I setup `Pyscript` in the front end to run the `Python` backend inside the web browser. 
 
 ## Frontend Architecture & Development
