@@ -8,9 +8,9 @@ When I first built the **Dynamic Date-Range Query Builder**, the UI was intended
 - **Preset query templates** (“last 30 days,” “year-to-date,” etc.)  
 - **Custom filter panels** (tables, dropdowns, free-text inputs)
 
-As the requirements solidified, I discovered that the LLM-generated frontend fully met our needs—so today the **entire front end** remains the original LLM output, polished and styled with Bootstrap for a consistent look and feel.
+As the requirements solidified, I discovered that the LLM-generated frontend fully met our needs—so today the **entire front end** remains the LLM output, polished and styled with Bootstrap for a consistent look and feel.
 
-Behind the scenes, I also:
+Behind the scenes, I:
 
 1. **Mapped user journeys & wireframes**  
    Defined how the RFP/pricing team would select date ranges, filters, and templates, then sketched UI flows to guide the LLM’s component generation.  
@@ -19,4 +19,4 @@ Behind the scenes, I also:
 3. **Authored every backend service**  
    Hand-wrote all database models, API endpoints, and query-builder logic in Python/Flask and T-SQL to power each frontend action.
 
-This hybrid approach let me move from concept to prototype in days, then harden both front and back ends into a robust tool the pricing team relies on daily.  
+This hybrid approach let me move from concept to prototype in days, then harden both front and back ends into a robust tool the pricing team can rely on daily.  
