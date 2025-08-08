@@ -51,4 +51,13 @@ This hybrid approach enabled rapid prototyping and hardening into a robust tool 
 
 The JSON parsing backend was written in `Python`. In order to provide feedback on what the selected dates are, I setup `Pyscript` in the front end to run the `Python` backend inside the web browser. 
 
-## Frontend Architecture & Development
+## Backend
+
+The `Python` class `DateRuleParser` is defined in `RFP_JSON_Parser.py`. It imports a few quarter related time functions from `quarter_helper_functions.py`. `DateRuleParser` takes in a JSON string, and outputs a dictionary containing the date information as mentioned in **Robust Backend Parsing**. It makes extensive use of the `datetime` and `dateutil` libraries.
+
+## Testing
+
+For each of the 115 hard coded contracts in the legacy system, I ported them over to the new JSON format using the UI. I defined these JSON ports in `freq_ID_to_JSON_ports.py`. The file `Unittest_DateRuleParse.py` contains a custom unit testing framework. It takes the parsed Start, End, Effective Start, and Effective End Dates from the JSON ports and compares them agains the ground truth dates from the legacy system. For each rule, it runs and compares the results for each day over the past 10 years to ensure consistently correct functionality. Any days that do not match up are then printed in a `diff` like manner.
+
+For proprietary reasons, `Unittest_DateRuleParse.py` can't be run from this repository because that would mean revealing the legacy system's backend code. However, results of what the unit testing output of `Unittest_DateRuleParse.py` might look like are in `unit_test_diffs.out`.
+
