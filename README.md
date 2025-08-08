@@ -19,7 +19,10 @@ The goal of this project was to replace the legacy system with an intuitive UI t
 
 - **Visual Contract Builder**  
   - Choose from predefined frequency types (e.g., *average rate over last calendar month*, *first business day of quarter*)  
-  - Combine multiple rules into a single, complex contract  
+  - Combine multiple rules into a single, complex contract
+  - Snap to beginning/end of week, month, or quarter
+  - Further specificy date ranges by stopping/starting at the first/second/etc following/preceding Monday/Tuesday.../Sunday
+  - Define different contract rules by weekday for especially complex contracts
 
 - **Live JSON Preview**  
   - Automatically generates a clean, structured JSON object for all user selections  
@@ -38,11 +41,7 @@ The goal of this project was to replace the legacy system with an intuitive UI t
 
 ## Frontend Architecture & Development
 
-When I first built the **Dynamic Date-Range Query Builder**, the UI was intended as an MVP. To accelerate prototyping, I provided a clear spec to a large language model (LLM), which generated all the necessary JavaScript, HTML, CSS, and Bootstrap code for:  
-
-- **Date-range picker behavior** (single vs. sliding window)  
-- **Preset query templates** (“last 30 days,” “year-to-date,” etc.)  
-- **Custom filter panels** (tables, dropdowns, free-text inputs)  
+When I first built the **Dynamic Date-Range Query Builder**, the UI was intended as an MVP. To accelerate prototyping, I provided a clear spec to a large language model (LLM), which generated all the necessary JavaScript, HTML, CSS, and Bootstrap code for the UI.  
 
 As requirements solidified, I found the LLM-generated frontend fully met our needs. Today, the **entire frontend** remains the LLM output, polished and styled with Bootstrap for consistency.  
 
