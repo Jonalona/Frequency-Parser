@@ -16,21 +16,24 @@ The goal of this project was to replace the legacy system with an intuitive UI t
 - Determines the effective date range when pricing takes effect
 
 ## Key Features
-- **Visual Contract Builder**  
-  - Select from predefined “frequency types” (e.g., “average rate over last calendar month,” “first business day of quarter”)  
-  - Mix-and-match multiple rules into one composite contract  
-- **Live JSON Preview**  
-  - UI generates a formatted JSON object representing all selections  
-  - Easy to copy, version-control, or hand off to downstream services  
-- **Meticulous Backend Parsing**  
-  - Python service ingests the JSON and computes:  
-    1. **Start & End Dates** for each rule  
-    2. **All Intermediate Dates** (e.g., the full list of days to average over)  
-    3. **Effective Date Ranges** (when each pricing rule takes effect)  
-- **Unit-Test Coverage**  
-  - 100% coverage on core parsing logic  
-  - Edge-case tests for leap years, business-day adjustments, and overlapping periods  
 
+- **Visual Contract Builder**  
+  - Choose from predefined frequency types (e.g., *average rate over last calendar month*, *first business day of quarter*)  
+  - Combine multiple rules into a single, complex contract  
+
+- **Live JSON Preview**  
+  - Automatically generates a clean, structured JSON object for all user selections  
+  - Ready for copy-paste, version control, or integration with downstream services  
+
+- **Robust Backend Parsing**  
+  - Python backend processes the JSON and computes:  
+    1. **Start & End Dates** for each rule  
+    2. **Full Date Lists** for averaging or other calculations  
+    3. **Effective Date Ranges** when pricing rules apply  
+
+- **Comprehensive Unit Testing**  
+  - 100% test coverage on core parsing logic  
+  - Includes edge cases for leap years, business-day adjustments, and overlapping periods  
 ## Frontend Architecture & Development
 
 When I first built the **Dynamic Date-Range Query Builder**, the UI was intended only as an MVP—and I accelerated prototyping by feeding a clear spec to a large language model (LLM). The LLM generated all the necessary JavaScript, HTML, CSS, and Bootstrap code for:
