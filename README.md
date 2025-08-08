@@ -28,7 +28,7 @@ The goal of this project was to replace the legacy system with an intuitive UI t
 - **Robust Backend Parsing**  
   - Python backend processes the JSON and computes:  
     1. **Start & End Dates** for each rule  
-    2. **Full Date Lists** for averaging or other calculations  
+    2. **Full Date Lists** (e.g., the full list of days to average over between start and end dates) 
     3. **Effective Date Ranges** when pricing rules apply  
 
 - **Comprehensive Unit Testing**  
