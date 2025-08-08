@@ -3,7 +3,6 @@ from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 import holidays
 from dateutil.rrule import rrule, DAILY, WEEKLY, MONTHLY, MO, TU, WE, TH, FR, SA, SU
-import pandas as pd
 from quarter_helper_functions import get_nth_quarter_func_dict
 
 

@@ -113,6 +113,10 @@ def print_compare_id(id):
         side_by_side(id_Parser.get_results_dict(), legacy_results, date_to_check_str)
            
        
+
+
+
+       
     
 num_years = 10
 for id in range(len(ported_IDs)):
